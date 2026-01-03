@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Домашняя уборка</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Антимонстрякус</h1>
+            <p class="subtitle">Не дай монстрам поселиться в доме!</p>
+        </header>
+
+        <!-- Экран добавления предметов -->
+        <div id="addItemsScreen" class="screen">
+            <h2>Добавить предмет</h2>
+            <div class="items-grid" id="availableItems">
+                <!-- Предметы будут добавлены через JavaScript -->
+            </div>
+            <button class="btn-secondary" onclick="showMainScreen()">Назад</button>
+        </div>
+
+        <!-- Главный экран с предметами -->
+        <div id="mainScreen" class="screen active">
+            <div class="items-container" id="userItems">
+                <!-- Добавленные пользователем предметы -->
+            </div>
+            <button class="btn-primary" onclick="showAddItemsScreen()">
+                ➕ Добавить предмет
+            </button>
+        </div>
+    </div>
+
+    <!-- Модальное окно для отметки уборки -->
+    <div id="cleanModal" class="modal">
+        <div class="modal-content">
+            <h3>Отметить уборку</h3>
+            <p>Ты действительно убрал(а) этот предмет?</p>
+            <div class="modal-buttons">
+                <button class="btn-primary" onclick="markAsCleaned()">Да, убрал(а)!</button>
+                <button class="btn-secondary" onclick="closeModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

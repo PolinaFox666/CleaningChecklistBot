@@ -1,0 +1,256 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+header {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.subtitle {
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+.screen {
+    display: none;
+}
+
+.screen.active {
+    display: block;
+}
+
+/* Кнопки */
+.btn-primary, .btn-secondary {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 20px;
+}
+
+.btn-primary {
+    background: #4CAF50;
+    color: white;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.btn-primary:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Сетка доступных предметов */
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.item-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.item-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+.item-card img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+
+.item-card span {
+    display: block;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Контейнер предметов пользователя */
+.items-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.user-item {
+    background: white;
+    border-radius: 15px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+}
+
+.user-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+}
+
+.user-item.dirty {
+    border: 3px solid #ff6b6b;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.item-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    margin-bottom: 10px;
+}
+
+.item-base-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: relative;
+    z-index: 1;
+}
+
+.germ-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.5s;
+}
+
+.germ-layer.visible {
+    opacity: 1;
+}
+
+.item-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.item-time {
+    font-size: 11px;
+    color: #999;
+}
+
+.item-time.warning {
+    color: #ff6b6b;
+    font-weight: 600;
+}
+
+/* Модальное окно */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    max-width: 90%;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-content h3 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    color: #666;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.modal-buttons button {
+    flex: 1;
+    margin-top: 0;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+    .items-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .items-container {
+        grid-template-columns: 1fr;
+    }
+}
+
