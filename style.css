@@ -139,21 +139,22 @@ body {
 
 .carousel-container {
     width: 100%;
-    overflow: visible;
+    overflow: hidden;
     position: relative;
     touch-action: pan-y;
-    padding: 0 20px;
 }
 
 .carousel-track {
     display: flex;
-    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     will-change: transform;
     align-items: center;
+    justify-content: flex-start;
 }
 
 .carousel-item {
     min-width: 100%;
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -161,31 +162,45 @@ body {
     padding: 20px;
     position: relative;
     flex-shrink: 0;
+    box-sizing: border-box;
+    transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-.carousel-item.prev,
-.carousel-item.next {
-    min-width: 60%;
-    opacity: 0.4;
-    transform: scale(0.75);
+.carousel-item.prev {
+    opacity: 0.3;
+    transform: scale(0.65);
     pointer-events: none;
+}
+
+.carousel-item.next {
+    opacity: 0.3;
+    transform: scale(0.65);
+    pointer-events: none;
+}
+
+.carousel-item.active {
+    opacity: 1;
+    transform: scale(1);
+    z-index: 2;
 }
 
 .item-image-container {
     position: relative;
     width: 320px;
     height: 320px;
+    max-width: 80vw;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 20px;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .carousel-item.prev .item-image-container,
 .carousel-item.next .item-image-container {
-    width: 200px;
-    height: 200px;
+    width: 180px;
+    height: 180px;
+    max-width: 45vw;
 }
 
 .item-base-image {
@@ -780,8 +795,18 @@ body {
     
     .carousel-item.prev .item-image-container,
     .carousel-item.next .item-image-container {
-        width: 160px;
-        height: 160px;
+        width: 140px;
+        height: 140px;
+    }
+    
+    .carousel-item.prev {
+        left: -25%;
+        width: 25%;
+    }
+    
+    .carousel-item.next {
+        right: -25%;
+        width: 25%;
     }
     
     .user-name {
