@@ -289,6 +289,35 @@ function prevItem() {
     }
 }
 
+// Обновление классов карусели
+function updateCarouselClasses() {
+    const track = document.getElementById('carouselTrack');
+    const itemsToShow = getFilteredItems();
+    
+    if (itemsToShow.length === 0) return;
+    
+    const items = track.querySelectorAll('.carousel-item');
+    items.forEach((item, index) => {
+        item.classList.remove('prev', 'next', 'active');
+        
+        const totalItems = itemsToShow.length;
+        let prevIndex = currentItemIndex - 1;
+        let nextIndex = currentItemIndex + 1;
+        
+        // Обработка циклического перехода
+        if (prevIndex < 0) prevIndex = totalItems - 1;
+        if (nextIndex >= totalItems) nextIndex = 0;
+        
+        if (index === currentItemIndex) {
+            item.classList.add('active');
+        } else if (index === prevIndex) {
+            item.classList.add('prev');
+        } else if (index === nextIndex) {
+            item.classList.add('next');
+        }
+    });
+}
+
 // Обновление карусели
 function updateCarousel() {
     const track = document.getElementById('carouselTrack');
@@ -296,21 +325,12 @@ function updateCarousel() {
     
     if (itemsToShow.length === 0) return;
     
+    // Центрируем активный элемент
     const offset = -currentItemIndex * 100;
     track.style.transform = `translateX(${offset}%)`;
     
-    // Обновляем классы для соседних элементов
-    const items = track.querySelectorAll('.carousel-item');
-    items.forEach((item, index) => {
-        item.classList.remove('prev', 'next', 'active');
-        if (index === currentItemIndex - 1 || (currentItemIndex === 0 && index === itemsToShow.length - 1)) {
-            item.classList.add('prev');
-        } else if (index === currentItemIndex + 1 || (currentItemIndex === itemsToShow.length - 1 && index === 0)) {
-            item.classList.add('next');
-        } else if (index === currentItemIndex) {
-            item.classList.add('active');
-        }
-    });
+    // Обновляем классы
+    updateCarouselClasses();
     
     updateIndicators();
     updateItemInfo();
@@ -319,6 +339,7 @@ function updateCarousel() {
 // Рендеринг карусели
 function renderCarousel() {
     const track = document.getElementById('carouselTrack');
+    const container = document.getElementById('carouselContainer');
     track.innerHTML = '';
     
     // Фильтруем предметы в зависимости от режима
@@ -326,7 +347,7 @@ function renderCarousel() {
     
     if (itemsToShow.length === 0) {
         track.innerHTML = `
-            <div class="carousel-item">
+            <div class="carousel-item active">
                 <div class="empty-state">
                     <div class="empty-state-icon">🏠</div>
                     <div class="empty-state-text">Пока нет предметов</div>
@@ -343,23 +364,18 @@ function renderCarousel() {
     if (currentItemIndex >= itemsToShow.length) {
         currentItemIndex = 0;
     }
+    if (currentItemIndex < 0) {
+        currentItemIndex = itemsToShow.length - 1;
+    }
     
-    // Создаем элементы с учетом соседних предметов
+    // Создаем все элементы
     itemsToShow.forEach((item, index) => {
         const itemElement = createCarouselItem(item, index);
-        
-        // Добавляем классы для соседних элементов
-        if (index === currentItemIndex - 1) {
-            itemElement.classList.add('prev');
-        } else if (index === currentItemIndex + 1 || (currentItemIndex === itemsToShow.length - 1 && index === 0)) {
-            itemElement.classList.add('next');
-        } else if (index === currentItemIndex) {
-            itemElement.classList.add('active');
-        }
-        
         track.appendChild(itemElement);
     });
     
+    // Устанавливаем правильные классы после создания всех элементов
+    updateCarouselClasses();
     updateCarousel();
 }
 
