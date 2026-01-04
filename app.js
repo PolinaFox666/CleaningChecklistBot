@@ -1,9 +1,23 @@
 // Конфигурация
 const CONFIG = {
-    CLEAN_INTERVAL_MINUTES: 5, // через 5 минут появляются первые микробы
-    GERM_STAGES: 5, // количество стадий загрязнения
-    STAGE_INTERVAL_MINUTES: 2 // интервал между стадиями в минутах
+    GERM_STAGES: 5 // количество стадий загрязнения
 };
+
+// Милые аватары по умолчанию
+const DEFAULT_AVATARS = [
+    { emoji: '🐱', name: 'Котёнок' },
+    { emoji: '🐶', name: 'Щенок' },
+    { emoji: '🐰', name: 'Зайчик' },
+    { emoji: '🐻', name: 'Медвежонок' },
+    { emoji: '🦊', name: 'Лисёнок' },
+    { emoji: '🐼', name: 'Панда' },
+    { emoji: '🐨', name: 'Коала' },
+    { emoji: '🦄', name: 'Единорог' },
+    { emoji: '🐸', name: 'Лягушонок' },
+    { emoji: '🐷', name: 'Поросёнок' },
+    { emoji: '🦉', name: 'Совёнок' },
+    { emoji: '🐯', name: 'Тигрёнок' }
+];
 
 // Доступные предметы для добавления
 const AVAILABLE_ITEMS = [
@@ -18,7 +32,8 @@ const AVAILABLE_ITEMS = [
     { id: 'floor', name: 'Пол', icon: '🏠', image: 'images/floor.png' },
     { id: 'sink', name: 'Раковина', icon: '🚿', image: 'images/sink.png' },
     { id: 'bathroom', name: 'Ванная', icon: '🛁', image: 'images/bathroom.png' },
-    { id: 'refrigerator', name: 'Холодильник', icon: '❄️', image: 'images/refrigerator.png' }
+    { id: 'refrigerator', name: 'Холодильник', icon: '❄️', image: 'images/refrigerator.png' },
+    { id: 'washing_machine', name: 'Стиральная машина', icon: '🧺', image: 'images/WashingMachine.png' }
 ];
 
 // Эмодзи микробов для анимации
@@ -37,10 +52,15 @@ let currentItemIndex = 0;
 let currentItemToClean = null;
 let currentItemToRename = null;
 let userName = '';
+let userAvatar = ''; // URL или путь к аватару
 let currentMode = 'single'; // 'single' или 'multi'
 let familyMembers = [];
 let selectedItems = []; // Выбранные предметы для добавления
 let currentFamilyFilter = null; // Текущий фильтр по члену семьи в Multi режиме
+let userSettings = { // Настройки пользователя
+    cleanIntervalMinutes: 5,
+    stageIntervalMinutes: 2
+};
 let touchStartX = 0;
 let touchEndX = 0;
 let isDragging = false;
@@ -50,7 +70,10 @@ let scrollLeft = 0;
 // Загрузка данных при старте
 function init() {
     loadUserData();
-    checkUserName();
+    // Проверяем имя только если его нет после загрузки
+    if (!userName) {
+        checkUserName();
+    }
     renderAvailableItems();
     setupCarousel();
     startTimer();
@@ -66,7 +89,11 @@ function loadUserData() {
     const savedName = localStorage.getItem('userName');
     if (savedName) {
         userName = savedName;
-        updateUserNameDisplay();
+    }
+    
+    const savedAvatar = localStorage.getItem('userAvatar');
+    if (savedAvatar) {
+        userAvatar = savedAvatar;
     }
     
     const savedMode = localStorage.getItem('currentMode');
@@ -79,14 +106,26 @@ function loadUserData() {
     if (savedMembers) {
         familyMembers = JSON.parse(savedMembers);
     }
+    
+    const savedSettings = localStorage.getItem('userSettings');
+    if (savedSettings) {
+        userSettings = { ...userSettings, ...JSON.parse(savedSettings) };
+    }
+    
+    // Обновляем отображение после загрузки всех данных
+    if (userName) {
+        updateUserNameDisplay();
+    }
 }
 
 // Сохранение всех данных
 function saveUserData() {
     localStorage.setItem('userItems', JSON.stringify(userItems));
     localStorage.setItem('userName', userName);
+    localStorage.setItem('userAvatar', userAvatar);
     localStorage.setItem('currentMode', currentMode);
     localStorage.setItem('familyMembers', JSON.stringify(familyMembers));
+    localStorage.setItem('userSettings', JSON.stringify(userSettings));
 }
 
 // Проверка имени пользователя
@@ -112,22 +151,36 @@ function saveUserName() {
     }
 }
 
-// Обновление отображения имени
+// Обновление отображения имени и аватара
 function updateUserNameDisplay() {
-    document.getElementById('userName').textContent = userName;
-    const initial = userName.charAt(0).toUpperCase();
-    document.getElementById('profileInitial').textContent = initial;
+    const userNameEl = document.getElementById('userName');
+    const profileIconEl = document.getElementById('profileIcon');
+    
+    if (userNameEl) {
+        userNameEl.textContent = userName || 'Гость';
+    }
+    
+    if (profileIconEl) {
+        if (userAvatar) {
+            if (userAvatar.startsWith('emoji:')) {
+                // Эмодзи аватар
+                const emoji = userAvatar.replace('emoji:', '');
+                profileIconEl.innerHTML = `<span style="font-size: 24px;">${emoji}</span>`;
+            } else {
+                // Загруженное фото
+                profileIconEl.innerHTML = `<img src="${userAvatar}" alt="${userName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            }
+        } else {
+            // Иначе показываем первую букву
+            const initial = userName ? userName.charAt(0).toUpperCase() : '?';
+            profileIconEl.innerHTML = `<span>${initial}</span>`;
+        }
+    }
 }
 
 // Открытие меню профиля
 function openProfileMenu() {
-    // Можно добавить меню для смены имени, выхода и т.д.
-    const newName = prompt('Введи новое имя:', userName);
-    if (newName && newName.trim()) {
-        userName = newName.trim();
-        saveUserData();
-        updateUserNameDisplay();
-    }
+    document.getElementById('profileModal').classList.add('active');
 }
 
 // Настройка карусели
@@ -239,8 +292,25 @@ function prevItem() {
 // Обновление карусели
 function updateCarousel() {
     const track = document.getElementById('carouselTrack');
+    const itemsToShow = getFilteredItems();
+    
+    if (itemsToShow.length === 0) return;
+    
     const offset = -currentItemIndex * 100;
     track.style.transform = `translateX(${offset}%)`;
+    
+    // Обновляем классы для соседних элементов
+    const items = track.querySelectorAll('.carousel-item');
+    items.forEach((item, index) => {
+        item.classList.remove('prev', 'next', 'active');
+        if (index === currentItemIndex - 1 || (currentItemIndex === 0 && index === itemsToShow.length - 1)) {
+            item.classList.add('prev');
+        } else if (index === currentItemIndex + 1 || (currentItemIndex === itemsToShow.length - 1 && index === 0)) {
+            item.classList.add('next');
+        } else if (index === currentItemIndex) {
+            item.classList.add('active');
+        }
+    });
     
     updateIndicators();
     updateItemInfo();
@@ -274,8 +344,19 @@ function renderCarousel() {
         currentItemIndex = 0;
     }
     
+    // Создаем элементы с учетом соседних предметов
     itemsToShow.forEach((item, index) => {
         const itemElement = createCarouselItem(item, index);
+        
+        // Добавляем классы для соседних элементов
+        if (index === currentItemIndex - 1) {
+            itemElement.classList.add('prev');
+        } else if (index === currentItemIndex + 1 || (currentItemIndex === itemsToShow.length - 1 && index === 0)) {
+            itemElement.classList.add('next');
+        } else if (index === currentItemIndex) {
+            itemElement.classList.add('active');
+        }
+        
         track.appendChild(itemElement);
     });
     
@@ -368,13 +449,13 @@ function generateGerms(stage) {
 
 // Вычисление стадии загрязнения
 function calculateGermStage(minutesSinceCleaning) {
-    if (minutesSinceCleaning < CONFIG.CLEAN_INTERVAL_MINUTES) {
+    if (minutesSinceCleaning < userSettings.cleanIntervalMinutes) {
         return 0;
     }
     
-    const minutesAfterFirstGerm = minutesSinceCleaning - CONFIG.CLEAN_INTERVAL_MINUTES;
+    const minutesAfterFirstGerm = minutesSinceCleaning - userSettings.cleanIntervalMinutes;
     const stage = Math.min(
-        Math.floor(minutesAfterFirstGerm / CONFIG.STAGE_INTERVAL_MINUTES) + 1,
+        Math.floor(minutesAfterFirstGerm / userSettings.stageIntervalMinutes) + 1,
         CONFIG.GERM_STAGES
     );
     
@@ -837,6 +918,138 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// Открытие модального окна профиля
+function openProfileMenu() {
+    const nameInput = document.getElementById('profileNameInput');
+    const cleanIntervalInput = document.getElementById('cleanIntervalInput');
+    const stageIntervalInput = document.getElementById('stageIntervalInput');
+    const avatarPreview = document.getElementById('avatarPreviewContent');
+    
+    if (nameInput) nameInput.value = userName || '';
+    if (cleanIntervalInput) cleanIntervalInput.value = userSettings.cleanIntervalMinutes;
+    if (stageIntervalInput) stageIntervalInput.value = userSettings.stageIntervalMinutes;
+    
+    // Обновляем превью аватара
+    if (avatarPreview) {
+        if (userAvatar) {
+            avatarPreview.innerHTML = `<img src="${userAvatar}" alt="${userName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        } else {
+            const initial = userName ? userName.charAt(0).toUpperCase() : '?';
+            avatarPreview.textContent = initial;
+        }
+    }
+    
+    document.getElementById('profileModal').classList.add('active');
+}
+
+// Закрытие модального окна профиля
+function closeProfileModal() {
+    document.getElementById('profileModal').classList.remove('active');
+}
+
+// Сохранение профиля
+function saveProfile() {
+    const nameInput = document.getElementById('profileNameInput');
+    const cleanIntervalInput = document.getElementById('cleanIntervalInput');
+    const stageIntervalInput = document.getElementById('stageIntervalInput');
+    
+    if (nameInput && nameInput.value.trim()) {
+        userName = nameInput.value.trim();
+    }
+    
+    if (cleanIntervalInput) {
+        userSettings.cleanIntervalMinutes = parseInt(cleanIntervalInput.value) || 5;
+    }
+    
+    if (stageIntervalInput) {
+        userSettings.stageIntervalMinutes = parseInt(stageIntervalInput.value) || 2;
+    }
+    
+    saveUserData();
+    updateUserNameDisplay();
+    closeProfileModal();
+    
+    // Обновляем карусель, так как изменились настройки
+    renderCarousel();
+    
+    if (tg?.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred('success');
+    }
+}
+
+// Открытие модального окна выбора аватара
+function openAvatarSelector() {
+    const grid = document.getElementById('avatarsGrid');
+    grid.innerHTML = '';
+    
+    // Добавляем стандартные аватары
+    DEFAULT_AVATARS.forEach((avatar, index) => {
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'avatar-option';
+        if (userAvatar === `emoji:${avatar.emoji}`) {
+            avatarDiv.classList.add('selected');
+        }
+        avatarDiv.textContent = avatar.emoji;
+        avatarDiv.onclick = () => selectAvatar(`emoji:${avatar.emoji}`, avatar.emoji);
+        grid.appendChild(avatarDiv);
+    });
+    
+    document.getElementById('avatarModal').classList.add('active');
+}
+
+// Закрытие модального окна выбора аватара
+function closeAvatarModal() {
+    document.getElementById('avatarModal').classList.remove('active');
+}
+
+// Выбор аватара
+function selectAvatar(avatarValue, emoji) {
+    userAvatar = avatarValue;
+    saveUserData();
+    updateUserNameDisplay();
+    closeAvatarModal();
+    
+    // Обновляем превью в модальном окне профиля
+    const avatarPreview = document.getElementById('avatarPreviewContent');
+    if (avatarPreview) {
+        avatarPreview.textContent = emoji;
+    }
+    
+    if (tg?.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
+// Загрузка своего аватара
+function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        alert('Пожалуйста, выбери изображение');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        userAvatar = e.target.result; // Сохраняем как base64
+        saveUserData();
+        updateUserNameDisplay();
+        closeAvatarModal();
+        
+        // Обновляем превью в модальном окне профиля
+        const avatarPreview = document.getElementById('avatarPreviewContent');
+        if (avatarPreview) {
+            avatarPreview.innerHTML = `<img src="${userAvatar}" alt="${userName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        }
+        
+        if (tg?.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+    };
+    reader.readAsDataURL(file);
+}
 
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', init);
