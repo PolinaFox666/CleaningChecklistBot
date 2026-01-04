@@ -58,9 +58,12 @@
         { id: 'floor', name: 'Пол', icon: '🏠', image: 'images/floor.png' },
         { id: 'sink', name: 'Раковина', icon: '🚿', image: 'images/sink.png' },
         { id: 'bathroom', name: 'Ванная', icon: '🛁', image: 'images/bathroom.png' },
-        { id: 'refrigerator', name: 'Холодильник', icon: '❄️', image: 'images/refrigerator.png' },
-        { id: 'washing_machine', name: 'Стиральная машина', icon: '🧺', image: 'images/WashingMachine.png' }
-    ];
+    { id: 'refrigerator', name: 'Холодильник', icon: '❄️', image: 'images/refrigerator.png' },
+    { id: 'washing_machine', name: 'Стиральная машина', icon: '🧺', image: 'images/WashingMachine.png' },
+    { id: 'stove', name: 'Плита', icon: '🔥', image: 'images/stove.png' },
+    { id: 'oven', name: 'Духовка', icon: '🍞', image: 'images/oven.png' },
+    { id: 'microwave', name: 'Микроволновка', icon: '📻', image: 'images/microwave.png' }
+];
 
     // Эмодзи микробов для анимации
     const GERM_EMOJIS = ['🦠', '👾', '💀', '👹', '🐛', '🤮','🤢'];
