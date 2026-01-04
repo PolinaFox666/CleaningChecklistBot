@@ -130,10 +130,11 @@
     <!-- Модальное окно переименования -->
     <div id="renameModal" class="modal">
         <div class="modal-content glass">
-            <h3>Переименовать предмет</h3>
+            <h3>Настройки предмета</h3>
             <input type="text" id="renameInput" placeholder="Новое название" maxlength="30" autofocus>
             <div class="modal-buttons">
                 <button class="btn-primary" onclick="saveItemName()">Сохранить</button>
+                <button class="btn-danger" onclick="deleteCurrentItem()" style="margin-top: 8px;">Удалить предмет</button>
                 <button class="btn-secondary" onclick="closeRenameModal()">Отмена</button>
             </div>
         </div>
