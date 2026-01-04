@@ -39,6 +39,8 @@ let currentItemToRename = null;
 let userName = '';
 let currentMode = 'single'; // 'single' или 'multi'
 let familyMembers = [];
+let selectedItems = []; // Выбранные предметы для добавления
+let currentFamilyFilter = null; // Текущий фильтр по члену семьи в Multi режиме
 let touchStartX = 0;
 let touchEndX = 0;
 let isDragging = false;
@@ -202,10 +204,19 @@ function handleMouseMove(e) {
     }
 }
 
+// Получение отфильтрованного списка предметов
+function getFilteredItems() {
+    if (currentMode === 'multi' && currentFamilyFilter) {
+        return userItems.filter(item => item.assignedTo === currentFamilyFilter);
+    }
+    return userItems;
+}
+
 // Следующий предмет
 function nextItem() {
-    if (userItems.length === 0) return;
-    currentItemIndex = (currentItemIndex + 1) % userItems.length;
+    const itemsToShow = getFilteredItems();
+    if (itemsToShow.length === 0) return;
+    currentItemIndex = (currentItemIndex + 1) % itemsToShow.length;
     updateCarousel();
     
     if (tg?.HapticFeedback) {
@@ -215,8 +226,9 @@ function nextItem() {
 
 // Предыдущий предмет
 function prevItem() {
-    if (userItems.length === 0) return;
-    currentItemIndex = (currentItemIndex - 1 + userItems.length) % userItems.length;
+    const itemsToShow = getFilteredItems();
+    if (itemsToShow.length === 0) return;
+    currentItemIndex = (currentItemIndex - 1 + itemsToShow.length) % itemsToShow.length;
     updateCarousel();
     
     if (tg?.HapticFeedback) {
@@ -239,13 +251,16 @@ function renderCarousel() {
     const track = document.getElementById('carouselTrack');
     track.innerHTML = '';
     
-    if (userItems.length === 0) {
+    // Фильтруем предметы в зависимости от режима
+    const itemsToShow = getFilteredItems();
+    
+    if (itemsToShow.length === 0) {
         track.innerHTML = `
             <div class="carousel-item">
                 <div class="empty-state">
                     <div class="empty-state-icon">🏠</div>
                     <div class="empty-state-text">Пока нет предметов</div>
-                    <div class="empty-state-subtext">Добавь предметы, чтобы начать следить за чистотой!</div>
+                    <div class="empty-state-subtext">${currentMode === 'multi' && currentFamilyFilter ? 'У этого члена семьи нет предметов' : 'Добавь предметы, чтобы начать следить за чистотой!'}</div>
                 </div>
             </div>
         `;
@@ -254,12 +269,16 @@ function renderCarousel() {
         return;
     }
     
-    userItems.forEach((item, index) => {
+    // Обновляем индекс если он выходит за границы
+    if (currentItemIndex >= itemsToShow.length) {
+        currentItemIndex = 0;
+    }
+    
+    itemsToShow.forEach((item, index) => {
         const itemElement = createCarouselItem(item, index);
         track.appendChild(itemElement);
     });
     
-    currentItemIndex = Math.min(currentItemIndex, userItems.length - 1);
     updateCarousel();
 }
 
@@ -367,9 +386,11 @@ function updateIndicators() {
     const container = document.getElementById('carouselIndicators');
     container.innerHTML = '';
     
-    if (userItems.length === 0) return;
+    const itemsToShow = getFilteredItems();
     
-    for (let i = 0; i < userItems.length; i++) {
+    if (itemsToShow.length === 0) return;
+    
+    for (let i = 0; i < itemsToShow.length; i++) {
         const indicator = document.createElement('div');
         indicator.className = `indicator ${i === currentItemIndex ? 'active' : ''}`;
         container.appendChild(indicator);
@@ -378,7 +399,9 @@ function updateIndicators() {
 
 // Обновление информации о предмете
 function updateItemInfo() {
-    if (userItems.length === 0) {
+    const itemsToShow = getFilteredItems();
+    
+    if (itemsToShow.length === 0) {
         document.getElementById('itemNameText').textContent = 'Добавь предметы';
         document.getElementById('itemTime').textContent = '';
         document.getElementById('editNameBtn').style.display = 'none';
@@ -386,14 +409,21 @@ function updateItemInfo() {
         return;
     }
     
-    const item = userItems[currentItemIndex];
+    const item = itemsToShow[currentItemIndex];
     const timeSinceCleaning = Date.now() - item.lastCleaned;
     const minutesSinceCleaning = Math.floor(timeSinceCleaning / 60000);
     const stage = calculateGermStage(minutesSinceCleaning);
     const isDirty = stage > 0;
     
     document.getElementById('itemNameText').textContent = item.name;
-    document.getElementById('itemTime').textContent = formatTime(minutesSinceCleaning);
+    
+    // Показываем информацию о назначенном члене семьи в Multi режиме
+    let timeText = formatTime(minutesSinceCleaning);
+    if (currentMode === 'multi' && item.assignedTo) {
+        timeText += ` • ${item.assignedTo}`;
+    }
+    
+    document.getElementById('itemTime').textContent = timeText;
     document.getElementById('itemTime').className = `item-time ${isDirty ? 'warning' : ''}`;
     document.getElementById('editNameBtn').style.display = 'flex';
     document.getElementById('cleanBtn').style.display = 'block';
@@ -435,11 +465,31 @@ function renderAvailableItems() {
     
     AVAILABLE_ITEMS.forEach(item => {
         const isAdded = userItems.some(ui => ui.id === item.id);
+        const isSelected = selectedItems.includes(item.id);
         
         const card = document.createElement('div');
-        card.className = `item-card ${isAdded ? 'disabled' : ''}`;
+        card.className = `item-card ${isAdded ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`;
+        
         if (!isAdded) {
-            card.onclick = () => addItem(item);
+            card.onclick = (e) => {
+                // Не срабатывает при клике на чекбокс
+                if (e.target.type !== 'checkbox') {
+                    toggleItemSelection(item.id);
+                }
+            };
+        }
+        
+        // Чекбокс для выбора
+        if (!isAdded) {
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = isSelected;
+            checkbox.className = 'item-checkbox';
+            checkbox.onclick = (e) => {
+                e.stopPropagation();
+                toggleItemSelection(item.id);
+            };
+            card.appendChild(checkbox);
         }
         
         // Пытаемся загрузить изображение, если не получается - показываем иконку
@@ -462,10 +512,60 @@ function renderAvailableItems() {
         
         container.appendChild(card);
     });
+    
+    updateAddButton();
 }
 
-// Добавление предмета
-function addItem(item) {
+// Переключение выбора предмета
+function toggleItemSelection(itemId) {
+    const index = selectedItems.indexOf(itemId);
+    if (index > -1) {
+        selectedItems.splice(index, 1);
+    } else {
+        selectedItems.push(itemId);
+    }
+    renderAvailableItems();
+    
+    if (tg?.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
+}
+
+// Обновление кнопки добавления
+function updateAddButton() {
+    const btn = document.getElementById('addSelectedBtn');
+    const count = document.getElementById('selectedCount');
+    if (selectedItems.length > 0) {
+        btn.style.display = 'block';
+        count.textContent = selectedItems.length;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+// Добавление выбранных предметов
+function addSelectedItems() {
+    if (selectedItems.length === 0) return;
+    
+    // Если Multi режим, показываем модальное окно выбора члена семьи
+    if (currentMode === 'multi') {
+        currentItemToClean = { ids: [...selectedItems] }; // Временно используем для хранения выбранных ID
+        showAssignModal();
+    } else {
+        // Single режим - добавляем сразу
+        selectedItems.forEach(itemId => {
+            const item = AVAILABLE_ITEMS.find(ai => ai.id === itemId);
+            if (item) {
+                addItemDirectly(item);
+            }
+        });
+        selectedItems = [];
+        showMainScreen();
+    }
+}
+
+// Прямое добавление предмета (без модального окна)
+function addItemDirectly(item) {
     const isAdded = userItems.some(ui => ui.id === item.id);
     if (isAdded) return;
     
@@ -481,17 +581,19 @@ function addItem(item) {
     
     userItems.push(newItem);
     saveUserData();
-    renderAvailableItems();
-    renderCarousel();
-    showMainScreen();
-    
-    if (tg?.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('light');
+}
+
+// Добавление предмета (старый метод, оставлен для совместимости)
+function addItem(item) {
+    // В режиме множественного выбора просто выбираем предмет
+    if (!userItems.some(ui => ui.id === item.id)) {
+        toggleItemSelection(item.id);
     }
 }
 
 // Показ экрана добавления предметов
 function showAddItemsScreen() {
+    selectedItems = []; // Сбрасываем выбранные предметы
     document.getElementById('mainScreen').classList.remove('active');
     document.getElementById('addItemsScreen').classList.add('active');
     renderAvailableItems();
@@ -506,9 +608,11 @@ function showMainScreen() {
 
 // Открытие модального окна для отметки уборки
 function openCleanModal() {
-    if (userItems.length === 0) return;
+    const itemsToShow = getFilteredItems();
     
-    currentItemToClean = userItems[currentItemIndex];
+    if (itemsToShow.length === 0) return;
+    
+    currentItemToClean = itemsToShow[currentItemIndex];
     document.getElementById('cleanModal').classList.add('active');
     
     if (tg?.HapticFeedback) {
@@ -542,9 +646,10 @@ function markAsCleaned() {
 
 // Редактирование имени предмета
 function editItemName() {
-    if (userItems.length === 0) return;
+    const itemsToShow = getFilteredItems();
+    if (itemsToShow.length === 0) return;
     
-    currentItemToRename = userItems[currentItemIndex];
+    currentItemToRename = itemsToShow[currentItemIndex];
     const input = document.getElementById('renameInput');
     input.value = currentItemToRename.name;
     document.getElementById('renameModal').classList.add('active');
@@ -587,9 +692,20 @@ function switchMode(mode) {
     updateModeButtons();
     
     if (mode === 'multi') {
-        // Можно добавить логику для мульти-режима
-        renderFamilyMembers();
+        // Инициализируем членов семьи если их нет
+        if (familyMembers.length === 0) {
+            familyMembers = [userName];
+            saveUserData();
+        }
+        // В Multi режиме показываем все предметы, но с фильтрацией
+        currentFamilyFilter = null;
+    } else {
+        // В Single режиме сбрасываем фильтр
+        currentFamilyFilter = null;
     }
+    
+    // Обновляем карусель с учетом режима
+    renderCarousel();
     
     if (tg?.HapticFeedback) {
         tg.HapticFeedback.impactOccurred('light');
@@ -602,13 +718,94 @@ function updateModeButtons() {
     document.getElementById('multiMode').classList.toggle('active', currentMode === 'multi');
 }
 
-// Рендеринг членов семьи (для Multi режима)
-function renderFamilyMembers() {
-    // Пока простое отображение, можно расширить
-    if (familyMembers.length === 0) {
-        familyMembers = [userName];
-        saveUserData();
+// Показ модального окна назначения предметов
+function showAssignModal() {
+    const container = document.getElementById('familyMembers');
+    container.innerHTML = '';
+    
+    // Добавляем текущего пользователя если его нет в списке
+    if (!familyMembers.includes(userName)) {
+        familyMembers.push(userName);
     }
+    
+    familyMembers.forEach(member => {
+        const memberDiv = document.createElement('div');
+        memberDiv.className = 'family-member';
+        memberDiv.onclick = () => assignItemsToMember(member);
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'family-member-avatar';
+        avatar.textContent = member.charAt(0).toUpperCase();
+        
+        const name = document.createElement('div');
+        name.className = 'family-member-name';
+        name.textContent = member;
+        
+        memberDiv.appendChild(avatar);
+        memberDiv.appendChild(name);
+        container.appendChild(memberDiv);
+    });
+    
+    // Кнопка добавления нового члена семьи
+    const addMemberDiv = document.createElement('div');
+    addMemberDiv.className = 'family-member';
+    addMemberDiv.onclick = addNewFamilyMember;
+    addMemberDiv.innerHTML = `
+        <div class="family-member-avatar" style="background: var(--glass-bg); color: var(--text-primary);">+</div>
+        <div class="family-member-name">Добавить члена семьи</div>
+    `;
+    container.appendChild(addMemberDiv);
+    
+    document.getElementById('assignModal').classList.add('active');
+}
+
+// Назначение предметов члену семьи
+function assignItemsToMember(member) {
+    if (currentItemToClean && currentItemToClean.ids) {
+        // Добавляем выбранные предметы
+        currentItemToClean.ids.forEach(itemId => {
+            const item = AVAILABLE_ITEMS.find(ai => ai.id === itemId);
+            if (item) {
+                const newItem = {
+                    id: item.id,
+                    name: item.name,
+                    icon: item.icon,
+                    image: item.image,
+                    lastCleaned: Date.now(),
+                    addedAt: Date.now(),
+                    assignedTo: member
+                };
+                userItems.push(newItem);
+            }
+        });
+    }
+    
+    saveUserData();
+    selectedItems = [];
+    closeAssignModal();
+    renderAvailableItems();
+    renderCarousel();
+    showMainScreen();
+    
+    if (tg?.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred('success');
+    }
+}
+
+// Добавление нового члена семьи
+function addNewFamilyMember() {
+    const name = prompt('Введи имя нового члена семьи:');
+    if (name && name.trim() && !familyMembers.includes(name.trim())) {
+        familyMembers.push(name.trim());
+        saveUserData();
+        showAssignModal(); // Перерисовываем список
+    }
+}
+
+// Закрытие модального окна назначения
+function closeAssignModal() {
+    document.getElementById('assignModal').classList.remove('active');
+    currentItemToClean = null;
 }
 
 // Таймер для обновления отображения
