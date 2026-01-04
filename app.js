@@ -422,11 +422,41 @@
         const imageContainer = document.createElement('div');
         imageContainer.className = 'item-image-container';
         
-        // Базовое изображение
+        // Определяем путь к изображению в зависимости от стадии загрязнения
+        let imagePath = item.image || itemInfo.image;
         const baseImage = document.createElement('img');
         baseImage.className = 'item-base-image';
-        baseImage.src = item.image || itemInfo.image || `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" font-size="100" text-anchor="middle" dominant-baseline="middle">${itemInfo.icon}</text></svg>`)}`;
         baseImage.alt = item.name;
+        
+        // Если есть стадия загрязнения и путь к изображению, пытаемся загрузить изображение стадии
+        if (stage > 0 && imagePath && !imagePath.startsWith('data:')) {
+            // Извлекаем базовое имя файла без расширения
+            const basePath = imagePath.replace(/\.(png|jpg|jpeg|svg)$/i, '');
+            const extension = imagePath.match(/\.(png|jpg|jpeg|svg)$/i)?.[1] || 'png';
+            
+            // Формируем путь к изображению стадии (stage + 1, так как stage 0 = чистое)
+            // Например: WashingMachine.png -> WashingMachine2.png для stage 1
+            const stageImagePath = `${basePath}${stage + 1}.${extension}`;
+            
+            // Пытаемся загрузить изображение стадии
+            const testImage = new Image();
+            testImage.onload = function() {
+                baseImage.src = stageImagePath;
+            };
+            testImage.onerror = function() {
+                // Если изображение стадии не найдено, используем базовое
+                baseImage.src = imagePath;
+            };
+            testImage.src = stageImagePath;
+            
+            // Устанавливаем базовое изображение как fallback
+            baseImage.src = imagePath;
+        } else {
+            // Чистое состояние или нет пути - используем базовое изображение
+            baseImage.src = imagePath || `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" font-size="100" text-anchor="middle" dominant-baseline="middle">${itemInfo.icon}</text></svg>`)}`;
+        }
+        
+        // Обработчик ошибок загрузки изображения
         baseImage.onerror = function() {
             // Если изображение не загрузилось, показываем иконку
             this.style.display = 'none';
