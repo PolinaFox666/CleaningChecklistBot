@@ -140,6 +140,64 @@
         </div>
     </div>
 
+    <!-- Модальное окно профиля -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content glass">
+            <h3>Профиль</h3>
+            
+            <!-- Аватар -->
+            <div class="avatar-section">
+                <div class="avatar-preview" id="avatarPreview" onclick="openAvatarSelector()">
+                    <span id="avatarPreviewContent"></span>
+                </div>
+                <button class="btn-secondary" onclick="openAvatarSelector()" style="margin-top: 12px;">
+                    Изменить аватар
+                </button>
+            </div>
+            
+            <!-- Имя -->
+            <div class="input-group">
+                <label>Имя</label>
+                <input type="text" id="profileNameInput" placeholder="Введи своё имя" maxlength="20" value="">
+            </div>
+            
+            <!-- Настройки интервалов -->
+            <div class="settings-section">
+                <h4>Настройки уборки</h4>
+                <div class="input-group">
+                    <label>Через сколько минут появляются первые микробы</label>
+                    <input type="number" id="cleanIntervalInput" min="1" max="1440" value="5">
+                </div>
+                <div class="input-group">
+                    <label>Интервал между стадиями загрязнения (минуты)</label>
+                    <input type="number" id="stageIntervalInput" min="1" max="1440" value="2">
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn-primary" onclick="saveProfile()">Сохранить</button>
+                <button class="btn-secondary" onclick="closeProfileModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно выбора аватара -->
+    <div id="avatarModal" class="modal">
+        <div class="modal-content glass">
+            <h3>Выбери аватар</h3>
+            <div class="avatars-grid" id="avatarsGrid">
+                <!-- Аватары будут добавлены через JavaScript -->
+            </div>
+            <div class="modal-buttons">
+                <label class="btn-secondary" style="cursor: pointer; display: inline-block;">
+                    Загрузить своё фото
+                    <input type="file" id="avatarUpload" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+                </label>
+                <button class="btn-secondary" onclick="closeAvatarModal()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
