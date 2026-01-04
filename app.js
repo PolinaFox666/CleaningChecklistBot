@@ -326,8 +326,11 @@
         if (itemsToShow.length === 0) return;
         
         const items = track.querySelectorAll('.carousel-item');
-        items.forEach((item, index) => {
+        items.forEach((item) => {
             item.classList.remove('prev', 'next', 'active');
+            
+            // Получаем индекс из data-атрибута для правильной синхронизации
+            const itemIndex = parseInt(item.getAttribute('data-item-index')) || 0;
             
             const totalItems = itemsToShow.length;
             let prevIndex = currentItemIndex - 1;
@@ -337,11 +340,11 @@
             if (prevIndex < 0) prevIndex = totalItems - 1;
             if (nextIndex >= totalItems) nextIndex = 0;
             
-            if (index === currentItemIndex) {
+            if (itemIndex === currentItemIndex) {
                 item.classList.add('active');
-            } else if (index === prevIndex) {
+            } else if (itemIndex === prevIndex) {
                 item.classList.add('prev');
-            } else if (index === nextIndex) {
+            } else if (itemIndex === nextIndex) {
                 item.classList.add('next');
             }
         });
@@ -397,9 +400,11 @@
             currentItemIndex = itemsToShow.length - 1;
         }
         
-        // Создаем все элементы
+        // Создаем все элементы в правильном порядке
         itemsToShow.forEach((item, index) => {
             const itemElement = createCarouselItem(item, index);
+            // Сохраняем data-атрибут для связи с индексом в массиве
+            itemElement.setAttribute('data-item-index', index);
             track.appendChild(itemElement);
         });
         
@@ -830,6 +835,39 @@
     function closeRenameModal() {
         document.getElementById('renameModal').classList.remove('active');
         currentItemToRename = null;
+    }
+
+    // Удаление текущего предмета
+    function deleteCurrentItem() {
+        const itemsToShow = getFilteredItems();
+        if (itemsToShow.length === 0) return;
+        
+        const itemToDelete = itemsToShow[currentItemIndex];
+        
+        // Подтверждение удаления
+        if (confirm(`Удалить предмет "${itemToDelete.name}"?`)) {
+            // Удаляем предмет из массива userItems
+            const itemIndex = userItems.findIndex(ui => ui.id === itemToDelete.id);
+            if (itemIndex !== -1) {
+                userItems.splice(itemIndex, 1);
+                saveUserData();
+                
+                // Обновляем индекс, если нужно
+                const newItemsToShow = getFilteredItems();
+                if (currentItemIndex >= newItemsToShow.length && newItemsToShow.length > 0) {
+                    currentItemIndex = newItemsToShow.length - 1;
+                } else if (newItemsToShow.length === 0) {
+                    currentItemIndex = 0;
+                }
+                
+                renderCarousel();
+                closeRenameModal();
+                
+                if (tg?.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            }
+        }
     }
 
     // Сохранение имени предмета
