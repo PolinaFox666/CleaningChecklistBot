@@ -427,11 +427,9 @@
         
         // Определяем путь к изображению в зависимости от стадии загрязнения
         let imagePath = item.image || itemInfo.image;
-        const baseImage = document.createElement('img');
-        baseImage.className = 'item-base-image';
-        baseImage.alt = item.name;
+        let finalImagePath = imagePath;
         
-        // Если есть стадия загрязнения и путь к изображению, пытаемся загрузить изображение стадии
+        // Если есть стадия загрязнения и путь к изображению, формируем путь к изображению стадии
         if (stage > 0 && imagePath && !imagePath.startsWith('data:')) {
             // Извлекаем базовое имя файла без расширения
             const basePath = imagePath.replace(/\.(png|jpg|jpeg|svg)$/i, '');
@@ -439,38 +437,40 @@
             
             // Формируем путь к изображению стадии (stage + 1, так как stage 0 = чистое)
             // Например: WashingMachine.png -> WashingMachine2.png для stage 1
-            const stageImagePath = `${basePath}${stage + 1}.${extension}`;
-            
-            // Пытаемся загрузить изображение стадии
-            const testImage = new Image();
-            testImage.onload = function() {
-                baseImage.src = stageImagePath;
-            };
-            testImage.onerror = function() {
-                // Если изображение стадии не найдено, используем базовое
-                baseImage.src = imagePath;
-            };
-            testImage.src = stageImagePath;
-            
-            // Устанавливаем базовое изображение как fallback
-            baseImage.src = imagePath;
-        } else {
-            // Чистое состояние или нет пути - используем базовое изображение
-            baseImage.src = imagePath || `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" font-size="100" text-anchor="middle" dominant-baseline="middle">${itemInfo.icon}</text></svg>`)}`;
+            finalImagePath = `${basePath}${stage + 1}.${extension}`;
         }
         
+        // Если нет пути - используем SVG с иконкой
+        if (!imagePath) {
+            finalImagePath = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" font-size="100" text-anchor="middle" dominant-baseline="middle">${itemInfo.icon}</text></svg>`)}`;
+        }
+        
+        // Создаем одно изображение
+        const baseImage = document.createElement('img');
+        baseImage.className = 'item-base-image';
+        baseImage.alt = item.name;
+        baseImage.src = finalImagePath;
+        
         // Обработчик ошибок загрузки изображения
+        let iconFallbackAdded = false;
         baseImage.onerror = function() {
+            if (iconFallbackAdded) return;
+            iconFallbackAdded = true;
+            
             // Если изображение не загрузилось, показываем иконку
             this.style.display = 'none';
-            const iconDiv = document.createElement('div');
-            iconDiv.className = 'item-base-image';
-            iconDiv.style.fontSize = '120px';
-            iconDiv.style.display = 'flex';
-            iconDiv.style.alignItems = 'center';
-            iconDiv.style.justifyContent = 'center';
-            iconDiv.textContent = itemInfo.icon;
-            imageContainer.appendChild(iconDiv);
+            
+            // Проверяем, нет ли уже иконки
+            if (!imageContainer.querySelector('.item-icon-fallback')) {
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'item-base-image item-icon-fallback';
+                iconDiv.style.fontSize = '120px';
+                iconDiv.style.display = 'flex';
+                iconDiv.style.alignItems = 'center';
+                iconDiv.style.justifyContent = 'center';
+                iconDiv.textContent = itemInfo.icon;
+                imageContainer.appendChild(iconDiv);
+            }
         };
         
         imageContainer.appendChild(baseImage);
@@ -530,21 +530,18 @@
         const periodData = CLEANING_PERIODS.find(p => p.id === period) || CLEANING_PERIODS[0];
         const periodMinutes = periodData.minutes || 1;
         
-        // Первая стадия появляется когда прошло 80% от периода
-        const firstGermThreshold = Math.floor(periodMinutes * 0.8);
-        
-        if (minutesSinceCleaning < firstGermThreshold) {
+        // Первая стадия появляется только когда период полностью прошел
+        // Если прошло меньше периода - предмет чистый
+        if (minutesSinceCleaning < periodMinutes) {
             return 0;
         }
         
-        // Вычисляем оставшееся время до следующей уборки
-        const remainingTime = periodMinutes - minutesSinceCleaning;
+        // Вычисляем насколько период превышен
         const overdueTime = minutesSinceCleaning - periodMinutes;
         
-        // Если период прошел, начинаем добавлять стадии
+        // Если период только что прошел - первая стадия
         if (overdueTime <= 0) {
-            // До конца периода - первая стадия
-            return 1;
+            return 0; // Еще не загрязнен
         }
         
         // После окончания периода - добавляем стадии пропорционально
@@ -1015,18 +1012,19 @@
     // Открытие модального окна профиля
     function openProfileMenu() {
         const nameInput = document.getElementById('profileNameInput');
-        const cleanIntervalInput = document.getElementById('cleanIntervalInput');
-        const stageIntervalInput = document.getElementById('stageIntervalInput');
         const avatarPreview = document.getElementById('avatarPreviewContent');
         
         if (nameInput) nameInput.value = userName || '';
-        if (cleanIntervalInput) cleanIntervalInput.value = userSettings.cleanIntervalMinutes;
-        if (stageIntervalInput) stageIntervalInput.value = userSettings.stageIntervalMinutes;
         
         // Обновляем превью аватара
         if (avatarPreview) {
             if (userAvatar) {
-                avatarPreview.innerHTML = `<img src="${userAvatar}" alt="${userName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                if (userAvatar.startsWith('emoji:')) {
+                    const emoji = userAvatar.replace('emoji:', '');
+                    avatarPreview.innerHTML = `<span style="font-size: 40px;">${emoji}</span>`;
+                } else {
+                    avatarPreview.innerHTML = `<img src="${userAvatar}" alt="${userName}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                }
             } else {
                 const initial = userName ? userName.charAt(0).toUpperCase() : '?';
                 avatarPreview.textContent = initial;
@@ -1044,27 +1042,14 @@
     // Сохранение профиля
     function saveProfile() {
         const nameInput = document.getElementById('profileNameInput');
-        const cleanIntervalInput = document.getElementById('cleanIntervalInput');
-        const stageIntervalInput = document.getElementById('stageIntervalInput');
         
         if (nameInput && nameInput.value.trim()) {
             userName = nameInput.value.trim();
         }
         
-        if (cleanIntervalInput) {
-            userSettings.cleanIntervalMinutes = parseInt(cleanIntervalInput.value) || 5;
-        }
-        
-        if (stageIntervalInput) {
-            userSettings.stageIntervalMinutes = parseInt(stageIntervalInput.value) || 2;
-        }
-        
         saveUserData();
         updateUserNameDisplay();
         closeProfileModal();
-        
-        // Обновляем карусель, так как изменились настройки
-        renderCarousel();
         
         if (tg?.HapticFeedback) {
             tg.HapticFeedback.notificationOccurred('success');
