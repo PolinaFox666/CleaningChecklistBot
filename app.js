@@ -436,13 +436,16 @@
         
         // Если есть стадия загрязнения и путь к изображению, формируем путь к изображению стадии
         if (stage > 0 && imagePath && !imagePath.startsWith('data:')) {
-            // Извлекаем базовое имя файла без расширения
-            const basePath = imagePath.replace(/\.(png|jpg|jpeg|svg)$/i, '');
-            const extension = imagePath.match(/\.(png|jpg|jpeg|svg)$/i)?.[1] || 'png';
+            // Извлекаем базовое имя файла без расширения и путь к папке
+            // Например: images/WashingMachine.png -> images/WashingMachine2.png для stage 1
+            const pathMatch = imagePath.match(/^(.+\/)?(.+?)(\.(png|jpg|jpeg|svg))?$/i);
+            const folderPath = pathMatch[1] || '';
+            const baseName = pathMatch[2] || '';
+            const extension = pathMatch[4] || 'png';
             
             // Формируем путь к изображению стадии (stage + 1, так как stage 0 = чистое)
-            // Например: WashingMachine.png -> WashingMachine2.png для stage 1
-            finalImagePath = `${basePath}${stage + 1}.${extension}`;
+            // Например: images/WashingMachine.png -> images/WashingMachine2.png для stage 1
+            finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
         }
         
         // Если нет пути - используем SVG с иконкой
