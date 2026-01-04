@@ -765,6 +765,27 @@ body {
     background: rgba(255, 255, 255, 0.3);
 }
 
+.btn-danger {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255, 59, 48, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 59, 48, 0.3);
+    color: var(--danger);
+}
+
+.btn-danger:active {
+    transform: scale(0.98);
+    background: rgba(255, 59, 48, 0.25);
+}
+
 /* Члены семьи */
 .family-members {
     display: flex;
