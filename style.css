@@ -17,20 +17,34 @@
     --danger: #ff3b30;
 }
 
+html, body {
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    min-height: 100vh;
+    height: 100vh;
     color: var(--text-primary);
-    overflow-x: hidden;
+    overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    touch-action: pan-y;
 }
 
 .screen {
     display: none;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     padding: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .screen.active {
@@ -38,19 +52,9 @@ body {
     flex-direction: column;
 }
 
-/* Верхняя панель */
+/* Верхняя панель - скрыта */
 .top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 20px 16px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--glass-border);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    display: none;
 }
 
 .profile-section {
@@ -93,6 +97,27 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Крупное имя пользователя на главном экране */
+.user-name-large {
+    text-align: center;
+    margin-bottom: 16px;
+    padding: 0 20px;
+}
+
+.user-name-large span {
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    letter-spacing: -1px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    display: block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
 .greeting {
     font-size: 13px;
     color: var(--text-secondary);
@@ -120,7 +145,56 @@ body {
     background: rgba(255, 255, 255, 0.35);
 }
 
+/* Плавающая кнопка добавления */
+.floating-add-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.3s;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+}
+
+.floating-add-btn:active {
+    transform: scale(0.9);
+    background: rgba(255, 255, 255, 0.5);
+}
+
 .top-bar h2 {
+    font-size: 17px;
+    font-weight: 600;
+    flex: 1;
+    text-align: center;
+}
+
+/* Заголовок экрана добавления предметов */
+.add-items-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 16px;
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.add-items-header h2 {
     font-size: 17px;
     font-weight: 600;
     flex: 1;
