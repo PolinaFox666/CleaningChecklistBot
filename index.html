@@ -22,13 +22,24 @@
 
     <!-- Главный экран -->
     <div id="mainScreen" class="screen active">
-        <!-- Плавающая кнопка добавления предметов -->
-        <button class="floating-add-btn" onclick="showAddItemsScreen()" title="Добавить предмет">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-        </button>
+        <!-- Верхняя панель -->
+        <div class="top-bar">
+            <div class="profile-section">
+                <div class="profile-icon" id="profileIcon" onclick="openProfileMenu()">
+                    <span id="profileInitial">?</span>
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="userName">Гость</div>
+                    <div class="greeting">Time to clean!</div>
+                </div>
+            </div>
+            <button class="add-btn" onclick="showAddItemsScreen()" title="Добавить предмет">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+        </div>
 
         <!-- Карусель предметов -->
         <div class="carousel-wrapper">
@@ -52,10 +63,6 @@
 
         <!-- Информация о предмете -->
         <div class="item-info" id="itemInfo">
-            <!-- Имя пользователя (крупное и стильное) -->
-            <div class="user-name-large" id="userNameLarge">
-                <span id="userNameDisplay">Гость</span>
-            </div>
             <div class="item-name-editable" id="itemNameDisplay">
                 <span id="itemNameText">Добавь предметы</span>
                 <button class="edit-btn" id="editNameBtn" onclick="editItemName()" style="display: none;">
