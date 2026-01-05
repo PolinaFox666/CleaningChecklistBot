@@ -495,26 +495,15 @@
             finalImagePath = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" font-size="100" text-anchor="middle" dominant-baseline="middle">${itemInfo.icon}</text></svg>`)}`;
         }
         
-        // Создаем одно изображение
+        // Создаем одно изображение с предзагрузкой
         const baseImage = document.createElement('img');
         baseImage.className = 'item-base-image';
         baseImage.alt = item.name;
         baseImage.setAttribute('data-item-id', item.id); // Добавляем ID для синхронизации
         
-        // Обработчик ошибок загрузки изображения
-        let fallbackAttempted = false;
-        baseImage.onerror = function() {
-            // Если изображение стадии не загрузилось, пробуем базовое
-            if (!fallbackAttempted && stage > 0 && imagePath && imagePath !== finalImagePath && !imagePath.startsWith('data:')) {
-                fallbackAttempted = true;
-                this.src = imagePath;
-                return; // Пробуем загрузить базовое изображение
-            }
-            
-            // Если и базовое не загрузилось (или это было базовое), показываем иконку
-            this.style.display = 'none';
-            
-            // Проверяем, нет ли уже иконки
+        // Функция для показа fallback иконки
+        const showFallbackIcon = () => {
+            baseImage.style.display = 'none';
             if (!imageContainer.querySelector('.item-icon-fallback')) {
                 const iconDiv = document.createElement('div');
                 iconDiv.className = 'item-base-image item-icon-fallback';
@@ -527,7 +516,44 @@
             }
         };
         
-        baseImage.src = finalImagePath;
+        // Предзагрузка изображения для проверки его существования
+        if (finalImagePath && !finalImagePath.startsWith('data:')) {
+            const testImage = new Image();
+            let fallbackAttempted = false;
+            
+            testImage.onload = () => {
+                // Изображение загрузилось успешно
+                baseImage.src = finalImagePath;
+            };
+            
+            testImage.onerror = () => {
+                // Если изображение стадии не загрузилось, пробуем базовое
+                if (!fallbackAttempted && stage > 0 && imagePath && imagePath !== finalImagePath && !imagePath.startsWith('data:')) {
+                    fallbackAttempted = true;
+                    const baseTestImage = new Image();
+                    baseTestImage.onload = () => {
+                        baseImage.src = imagePath;
+                    };
+                    baseTestImage.onerror = () => {
+                        showFallbackIcon();
+                    };
+                    baseTestImage.src = imagePath;
+                } else {
+                    showFallbackIcon();
+                }
+            };
+            
+            testImage.src = finalImagePath;
+        } else {
+            // Для data URI устанавливаем сразу
+            baseImage.src = finalImagePath;
+        }
+        
+        // Также добавляем обработчик ошибок на само изображение для надежности
+        baseImage.onerror = function() {
+            showFallbackIcon();
+        };
+        
         imageContainer.appendChild(baseImage);
         
         // Добавляем микробов
@@ -818,11 +844,22 @@
         const isAdded = userItems.some(ui => ui.id === item.id);
         if (isAdded) return;
         
+        // Убеждаемся, что путь к изображению правильный
+        let imagePath = item.image;
+        // Если путь содержит устаревшие подпапки, используем актуальный путь
+        if (imagePath && (imagePath.includes('tinified/') || imagePath.includes('этапы загрязнения'))) {
+            // Находим актуальный путь из каталога
+            const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+            if (itemInfo && itemInfo.image) {
+                imagePath = itemInfo.image;
+            }
+        }
+        
         const newItem = {
             id: item.id,
             name: item.name,
             icon: item.icon,
-            image: item.image,
+            image: imagePath || item.image, // Сохраняем актуальный путь
             lastCleaned: Date.now(),
             addedAt: Date.now(),
             assignedTo: currentMode === 'multi' ? null : userName,
