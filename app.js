@@ -113,6 +113,26 @@
         const savedItems = localStorage.getItem('userItems');
         if (savedItems) {
             userItems = JSON.parse(savedItems);
+            // Обновляем пути к изображениям, если они устарели
+            let needsSave = false;
+            userItems.forEach(item => {
+                const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+                if (itemInfo && itemInfo.image) {
+                    // Если путь к изображению устарел (содержит tinified или подпапки), обновляем его
+                    if (item.image && (item.image.includes('tinified/') || item.image.includes('этапы загрязнения'))) {
+                        item.image = itemInfo.image;
+                        needsSave = true;
+                    } else if (!item.image) {
+                        // Если изображение не было сохранено, используем из каталога
+                        item.image = itemInfo.image;
+                        needsSave = true;
+                    }
+                }
+            });
+            // Сохраняем обновленные данные, если были изменения
+            if (needsSave) {
+                saveUserData();
+            }
         }
         
         const savedName = localStorage.getItem('userName');
@@ -326,11 +346,17 @@
         if (itemsToShow.length === 0) return;
         
         const items = track.querySelectorAll('.carousel-item');
-        items.forEach((item) => {
-            item.classList.remove('prev', 'next', 'active');
+        items.forEach((itemEl) => {
+            itemEl.classList.remove('prev', 'next', 'active');
             
-            // Получаем индекс из data-атрибута для правильной синхронизации
-            const itemIndex = parseInt(item.getAttribute('data-item-index')) || 0;
+            // Получаем ID и индекс из data-атрибутов для правильной синхронизации
+            const itemId = itemEl.getAttribute('data-item-id');
+            const itemIndex = parseInt(itemEl.getAttribute('data-item-index')) || 0;
+            
+            // Проверяем, что элемент соответствует текущему индексу
+            // Используем ID для дополнительной проверки
+            const currentItem = itemsToShow[currentItemIndex];
+            const isCurrentItem = currentItem && itemId === currentItem.id && itemIndex === currentItemIndex;
             
             const totalItems = itemsToShow.length;
             let prevIndex = currentItemIndex - 1;
@@ -340,12 +366,12 @@
             if (prevIndex < 0) prevIndex = totalItems - 1;
             if (nextIndex >= totalItems) nextIndex = 0;
             
-            if (itemIndex === currentItemIndex) {
-                item.classList.add('active');
+            if (isCurrentItem || itemIndex === currentItemIndex) {
+                itemEl.classList.add('active');
             } else if (itemIndex === prevIndex) {
-                item.classList.add('prev');
+                itemEl.classList.add('prev');
             } else if (itemIndex === nextIndex) {
-                item.classList.add('next');
+                itemEl.classList.add('next');
             }
         });
     }
@@ -403,8 +429,9 @@
         // Создаем все элементы в правильном порядке
         itemsToShow.forEach((item, index) => {
             const itemElement = createCarouselItem(item, index);
-            // Сохраняем data-атрибут для связи с индексом в массиве
+            // Сохраняем data-атрибуты для связи с данными
             itemElement.setAttribute('data-item-index', index);
+            itemElement.setAttribute('data-item-id', item.id);
             track.appendChild(itemElement);
         });
         
@@ -431,7 +458,20 @@
         imageContainer.className = 'item-image-container';
         
         // Определяем путь к изображению в зависимости от стадии загрязнения
-        let imagePath = item.image || itemInfo.image;
+        // Приоритет: актуальный item.image -> itemInfo.image (из каталога)
+        // Если item.image устарел или неправильный, используем itemInfo.image
+        let imagePath = item.image;
+        
+        // Проверяем, что путь актуален (не содержит устаревшие подпапки)
+        if (imagePath && (imagePath.includes('tinified/') || imagePath.includes('этапы загрязнения'))) {
+            imagePath = itemInfo.image; // Используем актуальный путь из каталога
+        }
+        
+        // Если нет пути или он невалидный, используем из каталога
+        if (!imagePath) {
+            imagePath = itemInfo.image;
+        }
+        
         let finalImagePath = imagePath;
         
         // Если есть стадия загрязнения и путь к изображению, формируем путь к изображению стадии
@@ -439,17 +479,19 @@
             // Извлекаем базовое имя файла без расширения и путь к папке
             // Например: images/WashingMachine.png -> images/WashingMachine2.png для stage 1
             const pathMatch = imagePath.match(/^(.+\/)?(.+?)(\.(png|jpg|jpeg|svg))?$/i);
-            const folderPath = pathMatch[1] || '';
-            const baseName = pathMatch[2] || '';
-            const extension = pathMatch[4] || 'png';
-            
-            // Формируем путь к изображению стадии (stage + 1, так как stage 0 = чистое)
-            // Например: images/WashingMachine.png -> images/WashingMachine2.png для stage 1
-            finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
+            if (pathMatch) {
+                const folderPath = pathMatch[1] || '';
+                const baseName = pathMatch[2] || '';
+                const extension = pathMatch[4] || 'png';
+                
+                // Формируем путь к изображению стадии (stage + 1, так как stage 0 = чистое)
+                // Например: images/WashingMachine.png -> images/WashingMachine2.png для stage 1
+                finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
+            }
         }
         
         // Если нет пути - используем SVG с иконкой
-        if (!imagePath) {
+        if (!imagePath || imagePath.startsWith('data:')) {
             finalImagePath = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" font-size="100" text-anchor="middle" dominant-baseline="middle">${itemInfo.icon}</text></svg>`)}`;
         }
         
@@ -457,15 +499,19 @@
         const baseImage = document.createElement('img');
         baseImage.className = 'item-base-image';
         baseImage.alt = item.name;
-        baseImage.src = finalImagePath;
+        baseImage.setAttribute('data-item-id', item.id); // Добавляем ID для синхронизации
         
         // Обработчик ошибок загрузки изображения
-        let iconFallbackAdded = false;
+        let fallbackAttempted = false;
         baseImage.onerror = function() {
-            if (iconFallbackAdded) return;
-            iconFallbackAdded = true;
+            // Если изображение стадии не загрузилось, пробуем базовое
+            if (!fallbackAttempted && stage > 0 && imagePath && imagePath !== finalImagePath && !imagePath.startsWith('data:')) {
+                fallbackAttempted = true;
+                this.src = imagePath;
+                return; // Пробуем загрузить базовое изображение
+            }
             
-            // Если изображение не загрузилось, показываем иконку
+            // Если и базовое не загрузилось (или это было базовое), показываем иконку
             this.style.display = 'none';
             
             // Проверяем, нет ли уже иконки
@@ -481,6 +527,7 @@
             }
         };
         
+        baseImage.src = finalImagePath;
         imageContainer.appendChild(baseImage);
         
         // Добавляем микробов
@@ -580,7 +627,32 @@
             return;
         }
         
+        // Проверяем, что индекс в допустимых пределах
+        if (currentItemIndex < 0 || currentItemIndex >= itemsToShow.length) {
+            currentItemIndex = 0;
+        }
+        
         const item = itemsToShow[currentItemIndex];
+        
+        // Дополнительная проверка: убеждаемся, что активный элемент карусели соответствует данным
+        const track = document.getElementById('carouselTrack');
+        const activeElement = track.querySelector('.carousel-item.active');
+        if (activeElement) {
+            const activeItemId = activeElement.getAttribute('data-item-id');
+            if (activeItemId && activeItemId !== item.id) {
+                // Если не совпадает, ищем правильный индекс
+                const correctIndex = itemsToShow.findIndex(i => i.id === activeItemId);
+                if (correctIndex !== -1) {
+                    currentItemIndex = correctIndex;
+                    const correctItem = itemsToShow[currentItemIndex];
+                    if (correctItem) {
+                        // Обновляем карусель с правильным индексом
+                        updateCarousel();
+                        return; // Выходим, так как updateCarousel вызовет updateItemInfo снова
+                    }
+                }
+            }
+        }
         const timeSinceCleaning = Date.now() - item.lastCleaned;
         const minutesSinceCleaning = Math.floor(timeSinceCleaning / 60000);
         const stage = calculateGermStage(minutesSinceCleaning, item);
