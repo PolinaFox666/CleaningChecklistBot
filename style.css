@@ -54,6 +54,12 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Дополнительный padding для главного экрана, чтобы переключатель не обрезался */
+#mainScreen.active {
+    padding-bottom: 40px;
+    box-sizing: border-box;
+}
+
 /* Верхняя панель */
 .top-bar {
     display: flex;
