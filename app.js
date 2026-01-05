@@ -516,6 +516,11 @@
             }
         };
         
+        // Функция для установки src с fallback
+        const setImageSrc = (src) => {
+            baseImage.src = src;
+        };
+        
         // Предзагрузка изображения для проверки его существования
         if (finalImagePath && !finalImagePath.startsWith('data:')) {
             const testImage = new Image();
@@ -523,22 +528,23 @@
             
             testImage.onload = () => {
                 // Изображение загрузилось успешно
-                baseImage.src = finalImagePath;
+                setImageSrc(finalImagePath);
             };
             
             testImage.onerror = () => {
-                // Если изображение стадии не загрузилось, пробуем базовое
-                if (!fallbackAttempted && stage > 0 && imagePath && imagePath !== finalImagePath && !imagePath.startsWith('data:')) {
+                // Если изображение стадии не загрузилось, пробуем базовое (для любого stage)
+                if (!fallbackAttempted && imagePath && imagePath !== finalImagePath && !imagePath.startsWith('data:')) {
                     fallbackAttempted = true;
                     const baseTestImage = new Image();
                     baseTestImage.onload = () => {
-                        baseImage.src = imagePath;
+                        setImageSrc(imagePath);
                     };
                     baseTestImage.onerror = () => {
                         showFallbackIcon();
                     };
                     baseTestImage.src = imagePath;
                 } else {
+                    // Если это уже базовое изображение или нет альтернативы, показываем иконку
                     showFallbackIcon();
                 }
             };
@@ -546,12 +552,28 @@
             testImage.src = finalImagePath;
         } else {
             // Для data URI устанавливаем сразу
-            baseImage.src = finalImagePath;
+            if (finalImagePath) {
+                setImageSrc(finalImagePath);
+            } else {
+                showFallbackIcon();
+            }
         }
         
         // Также добавляем обработчик ошибок на само изображение для надежности
         baseImage.onerror = function() {
-            showFallbackIcon();
+            // Если это изображение стадии, пробуем базовое
+            if (imagePath && imagePath !== this.src && !imagePath.startsWith('data:')) {
+                const baseTestImage = new Image();
+                baseTestImage.onload = () => {
+                    this.src = imagePath;
+                };
+                baseTestImage.onerror = () => {
+                    showFallbackIcon();
+                };
+                baseTestImage.src = imagePath;
+            } else {
+                showFallbackIcon();
+            }
         };
         
         imageContainer.appendChild(baseImage);
