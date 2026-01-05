@@ -122,8 +122,8 @@
                     if (item.image && (item.image.includes('tinified/') || item.image.includes('этапы загрязнения'))) {
                         item.image = itemInfo.image;
                         needsSave = true;
-                    } else if (!item.image) {
-                        // Если изображение не было сохранено, используем из каталога
+                    } else if (!item.image || (typeof item.image === 'string' && item.image.trim() === '')) {
+                        // Если изображение не было сохранено или пустое, используем из каталога
                         item.image = itemInfo.image;
                         needsSave = true;
                     }
@@ -468,7 +468,7 @@
         }
         
         // Если нет пути или он невалидный, используем из каталога
-        if (!imagePath) {
+        if (!imagePath || imagePath.trim() === '') {
             imagePath = itemInfo.image;
         }
         
@@ -495,11 +495,12 @@
             finalImagePath = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" font-size="100" text-anchor="middle" dominant-baseline="middle">${itemInfo.icon}</text></svg>`)}`;
         }
         
-        // Создаем одно изображение с предзагрузкой
+        // Создаем одно изображение
         const baseImage = document.createElement('img');
         baseImage.className = 'item-base-image';
         baseImage.alt = item.name;
-        baseImage.setAttribute('data-item-id', item.id); // Добавляем ID для синхронизации
+        baseImage.setAttribute('data-item-id', item.id);
+        baseImage.setAttribute('data-item-name', item.name);
         
         // Функция для показа fallback иконки
         const showFallbackIcon = () => {
@@ -516,65 +517,26 @@
             }
         };
         
-        // Функция для установки src с fallback
-        const setImageSrc = (src) => {
-            baseImage.src = src;
-        };
-        
-        // Предзагрузка изображения для проверки его существования
-        if (finalImagePath && !finalImagePath.startsWith('data:')) {
-            const testImage = new Image();
-            let fallbackAttempted = false;
-            
-            testImage.onload = () => {
-                // Изображение загрузилось успешно
-                setImageSrc(finalImagePath);
-            };
-            
-            testImage.onerror = () => {
-                // Если изображение стадии не загрузилось, пробуем базовое (для любого stage)
-                if (!fallbackAttempted && imagePath && imagePath !== finalImagePath && !imagePath.startsWith('data:')) {
-                    fallbackAttempted = true;
-                    const baseTestImage = new Image();
-                    baseTestImage.onload = () => {
-                        setImageSrc(imagePath);
-                    };
-                    baseTestImage.onerror = () => {
-                        showFallbackIcon();
-                    };
-                    baseTestImage.src = imagePath;
-                } else {
-                    // Если это уже базовое изображение или нет альтернативы, показываем иконку
-                    showFallbackIcon();
-                }
-            };
-            
-            testImage.src = finalImagePath;
-        } else {
-            // Для data URI устанавливаем сразу
-            if (finalImagePath) {
-                setImageSrc(finalImagePath);
-            } else {
-                showFallbackIcon();
-            }
-        }
-        
-        // Также добавляем обработчик ошибок на само изображение для надежности
+        // Устанавливаем src сразу - браузер сам попробует загрузить
+        let fallbackAttempted = false;
         baseImage.onerror = function() {
-            // Если это изображение стадии, пробуем базовое
-            if (imagePath && imagePath !== this.src && !imagePath.startsWith('data:')) {
-                const baseTestImage = new Image();
-                baseTestImage.onload = () => {
-                    this.src = imagePath;
-                };
-                baseTestImage.onerror = () => {
-                    showFallbackIcon();
-                };
-                baseTestImage.src = imagePath;
-            } else {
-                showFallbackIcon();
+            // Если изображение стадии не загрузилось, пробуем базовое (для любого stage)
+            if (!fallbackAttempted && imagePath && imagePath !== finalImagePath && !imagePath.startsWith('data:')) {
+                fallbackAttempted = true;
+                this.src = imagePath;
+                return; // Пробуем загрузить базовое изображение
             }
+            
+            // Если и базовое не загрузилось (или это было базовое), показываем иконку
+            showFallbackIcon();
         };
+        
+        // Устанавливаем src - браузер начнет загрузку
+        if (finalImagePath) {
+            baseImage.src = finalImagePath;
+        } else {
+            showFallbackIcon();
+        }
         
         imageContainer.appendChild(baseImage);
         
@@ -866,22 +828,15 @@
         const isAdded = userItems.some(ui => ui.id === item.id);
         if (isAdded) return;
         
-        // Убеждаемся, что путь к изображению правильный
-        let imagePath = item.image;
-        // Если путь содержит устаревшие подпапки, используем актуальный путь
-        if (imagePath && (imagePath.includes('tinified/') || imagePath.includes('этапы загрязнения'))) {
-            // Находим актуальный путь из каталога
-            const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
-            if (itemInfo && itemInfo.image) {
-                imagePath = itemInfo.image;
-            }
-        }
+        // Всегда используем актуальный путь из каталога AVAILABLE_ITEMS
+        const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+        const imagePath = itemInfo && itemInfo.image ? itemInfo.image : (item.image || null);
         
         const newItem = {
             id: item.id,
             name: item.name,
             icon: item.icon,
-            image: imagePath || item.image, // Сохраняем актуальный путь
+            image: imagePath, // Сохраняем актуальный путь из каталога
             lastCleaned: Date.now(),
             addedAt: Date.now(),
             assignedTo: currentMode === 'multi' ? null : userName,
@@ -890,6 +845,9 @@
         
         userItems.push(newItem);
         saveUserData();
+        
+        // Перерисовываем карусель после добавления
+        renderCarousel();
     }
 
     // Добавление предмета (старый метод, оставлен для совместимости)
