@@ -113,18 +113,28 @@
         const savedItems = localStorage.getItem('userItems');
         if (savedItems) {
             userItems = JSON.parse(savedItems);
-            // Обновляем пути к изображениям, если они устарели
+            // ВАЖНО: Всегда обновляем пути к изображениям из актуального каталога AVAILABLE_ITEMS
+            // Это гарантирует, что пути всегда соответствуют текущим изображениям в каталоге
             let needsSave = false;
             userItems.forEach(item => {
                 const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
-                if (itemInfo && itemInfo.image) {
-                    // Если путь к изображению устарел (содержит tinified или подпапки), обновляем его
-                    if (item.image && (item.image.includes('tinified/') || item.image.includes('этапы загрязнения'))) {
-                        item.image = itemInfo.image;
+                if (itemInfo) {
+                    // Всегда обновляем путь к изображению из каталога, если он есть
+                    if (itemInfo.image) {
+                        // Обновляем путь, если он отличается от актуального в каталоге
+                        if (item.image !== itemInfo.image) {
+                            item.image = itemInfo.image;
+                            needsSave = true;
+                        }
+                    }
+                    // Обновляем имя, если оно изменилось в каталоге
+                    if (itemInfo.name && item.name !== itemInfo.name) {
+                        item.name = itemInfo.name;
                         needsSave = true;
-                    } else if (!item.image || (typeof item.image === 'string' && item.image.trim() === '')) {
-                        // Если изображение не было сохранено или пустое, используем из каталога
-                        item.image = itemInfo.image;
+                    }
+                    // Обновляем иконку, если она изменилась в каталоге
+                    if (itemInfo.icon && item.icon !== itemInfo.icon) {
+                        item.icon = itemInfo.icon;
                         needsSave = true;
                     }
                 }
@@ -450,35 +460,34 @@
         const div = document.createElement('div');
         div.className = 'carousel-item';
         
-        // Получаем информацию о предмете
-        const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id) || { icon: '🏠', image: null };
+        // ВАЖНО: Всегда получаем актуальную информацию из каталога AVAILABLE_ITEMS
+        const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+        if (!itemInfo) {
+            console.error(`Предмет с id "${item.id}" не найден в каталоге AVAILABLE_ITEMS`);
+            return div;
+        }
         
         // Создаем изображение предмета
         const imageContainer = document.createElement('div');
         imageContainer.className = 'item-image-container';
         
-        // Определяем путь к изображению в зависимости от стадии загрязнения
-        // Приоритет: актуальный item.image -> itemInfo.image (из каталога)
-        // Если item.image устарел или неправильный, используем itemInfo.image
-        let imagePath = item.image;
+        // УПРОЩЕННАЯ ЛОГИКА: Всегда используем актуальный путь из каталога AVAILABLE_ITEMS
+        // Это гарантирует, что путь всегда правильный и соответствует названию предмета
+        let baseImagePath = itemInfo.image;
         
-        // Проверяем, что путь актуален (не содержит устаревшие подпапки)
-        if (imagePath && (imagePath.includes('tinified/') || imagePath.includes('этапы загрязнения'))) {
-            imagePath = itemInfo.image; // Используем актуальный путь из каталога
+        // Если в каталоге нет пути к изображению, используем иконку
+        if (!baseImagePath || typeof baseImagePath !== 'string' || baseImagePath.trim() === '') {
+            baseImagePath = null;
         }
         
-        // Если нет пути или он невалидный, используем из каталога
-        if (!imagePath || imagePath.trim() === '') {
-            imagePath = itemInfo.image;
-        }
+        // Определяем финальный путь к изображению в зависимости от стадии
+        let finalImagePath = baseImagePath;
         
-        let finalImagePath = imagePath;
-        
-        // Если есть стадия загрязнения и путь к изображению, формируем путь к изображению стадии
-        if (stage > 0 && imagePath && !imagePath.startsWith('data:')) {
+        // Если есть стадия загрязнения и базовый путь к изображению, формируем путь к изображению стадии
+        if (stage > 0 && baseImagePath) {
             // Извлекаем базовое имя файла без расширения и путь к папке
             // Например: images/WashingMachine.png -> images/WashingMachine2.png для stage 1
-            const pathMatch = imagePath.match(/^(.+\/)?(.+?)(\.(png|jpg|jpeg|svg))?$/i);
+            const pathMatch = baseImagePath.match(/^(.+\/)?(.+?)(\.(png|jpg|jpeg|svg))?$/i);
             if (pathMatch) {
                 const folderPath = pathMatch[1] || '';
                 const baseName = pathMatch[2] || '';
@@ -490,17 +499,12 @@
             }
         }
         
-        // Если нет пути - используем SVG с иконкой
-        if (!imagePath || imagePath.startsWith('data:')) {
-            finalImagePath = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" font-size="100" text-anchor="middle" dominant-baseline="middle">${itemInfo.icon}</text></svg>`)}`;
-        }
-        
-        // Создаем одно изображение
+        // Создаем элемент изображения
         const baseImage = document.createElement('img');
         baseImage.className = 'item-base-image';
-        baseImage.alt = item.name;
+        baseImage.alt = item.name || itemInfo.name;
         baseImage.setAttribute('data-item-id', item.id);
-        baseImage.setAttribute('data-item-name', item.name);
+        baseImage.setAttribute('data-item-name', item.name || itemInfo.name);
         
         // Функция для показа fallback иконки
         const showFallbackIcon = () => {
@@ -517,24 +521,39 @@
             }
         };
         
-        // Устанавливаем src сразу - браузер сам попробует загрузить
+        // Обработчики загрузки изображения
         let fallbackAttempted = false;
+        let imageLoaded = false;
+        
+        baseImage.onload = function() {
+            imageLoaded = true;
+            this.style.display = 'block';
+            // Скрываем fallback иконку, если она была показана
+            const fallback = imageContainer.querySelector('.item-icon-fallback');
+            if (fallback) {
+                fallback.style.display = 'none';
+            }
+        };
+        
         baseImage.onerror = function() {
-            // Если изображение стадии не загрузилось, пробуем базовое (для любого stage)
-            if (!fallbackAttempted && imagePath && imagePath !== finalImagePath && !imagePath.startsWith('data:')) {
+            // Если изображение стадии не загрузилось, пробуем базовое изображение (для любого stage)
+            if (!fallbackAttempted && baseImagePath && baseImagePath !== finalImagePath) {
                 fallbackAttempted = true;
-                this.src = imagePath;
+                this.src = baseImagePath;
                 return; // Пробуем загрузить базовое изображение
             }
             
             // Если и базовое не загрузилось (или это было базовое), показываем иконку
-            showFallbackIcon();
+            if (!imageLoaded) {
+                showFallbackIcon();
+            }
         };
         
-        // Устанавливаем src - браузер начнет загрузку
+        // Устанавливаем src сразу - браузер начнет загрузку
         if (finalImagePath) {
             baseImage.src = finalImagePath;
         } else {
+            // Если нет пути к изображению, сразу показываем иконку
             showFallbackIcon();
         }
         
@@ -828,15 +847,19 @@
         const isAdded = userItems.some(ui => ui.id === item.id);
         if (isAdded) return;
         
-        // Всегда используем актуальный путь из каталога AVAILABLE_ITEMS
+        // ВАЖНО: Всегда используем актуальные данные из каталога AVAILABLE_ITEMS
+        // Это гарантирует, что имя, иконка и путь к изображению всегда правильные
         const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
-        const imagePath = itemInfo && itemInfo.image ? itemInfo.image : (item.image || null);
+        if (!itemInfo) {
+            console.error(`Предмет с id "${item.id}" не найден в каталоге AVAILABLE_ITEMS`);
+            return;
+        }
         
         const newItem = {
-            id: item.id,
-            name: item.name,
-            icon: item.icon,
-            image: imagePath, // Сохраняем актуальный путь из каталога
+            id: itemInfo.id,
+            name: itemInfo.name, // Используем имя из каталога
+            icon: itemInfo.icon, // Используем иконку из каталога
+            image: itemInfo.image || null, // Используем путь к изображению из каталога
             lastCleaned: Date.now(),
             addedAt: Date.now(),
             assignedTo: currentMode === 'multi' ? null : userName,
@@ -846,8 +869,7 @@
         userItems.push(newItem);
         saveUserData();
         
-        // Перерисовываем карусель после добавления
-        renderCarousel();
+        // Не вызываем renderCarousel() здесь - он будет вызван в showMainScreen()
     }
 
     // Добавление предмета (старый метод, оставлен для совместимости)
@@ -1064,13 +1086,14 @@
         if (currentItemToClean && currentItemToClean.ids) {
             // Добавляем выбранные предметы
             currentItemToClean.ids.forEach(itemId => {
-                const item = AVAILABLE_ITEMS.find(ai => ai.id === itemId);
-                if (item) {
+                // ВАЖНО: Всегда используем актуальные данные из каталога AVAILABLE_ITEMS
+                const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === itemId);
+                if (itemInfo) {
                     const newItem = {
-                        id: item.id,
-                        name: item.name,
-                        icon: item.icon,
-                        image: item.image,
+                        id: itemInfo.id,
+                        name: itemInfo.name, // Используем имя из каталога
+                        icon: itemInfo.icon, // Используем иконку из каталога
+                        image: itemInfo.image || null, // Используем путь к изображению из каталога
                         lastCleaned: Date.now(),
                         addedAt: Date.now(),
                         assignedTo: member,
@@ -1113,9 +1136,71 @@
     function startTimer() {
         setInterval(() => {
             if (userItems.length > 0) {
-                renderCarousel();
+                // Вместо полного пересоздания карусели, обновляем только существующие элементы
+                updateCarouselItems();
             }
         }, 60000); // Обновляем каждую минуту
+    }
+    
+    // Обновление существующих элементов карусели без пересоздания
+    function updateCarouselItems() {
+        const track = document.getElementById('carouselTrack');
+        const itemsToShow = getFilteredItems();
+        
+        if (itemsToShow.length === 0) return;
+        
+        // Обновляем только существующие элементы
+        const existingItems = track.querySelectorAll('.carousel-item');
+        existingItems.forEach((itemEl, index) => {
+            if (index < itemsToShow.length) {
+                const item = itemsToShow[index];
+                const timeSinceCleaning = Date.now() - item.lastCleaned;
+                const minutesSinceCleaning = Math.floor(timeSinceCleaning / 60000);
+                const stage = calculateGermStage(minutesSinceCleaning, item);
+                
+                // ВАЖНО: Всегда используем актуальный путь из каталога AVAILABLE_ITEMS
+                const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+                if (!itemInfo) return;
+                
+                // Обновляем изображение только если стадия изменилась
+                const imageContainer = itemEl.querySelector('.item-image-container');
+                if (imageContainer) {
+                    const currentImage = imageContainer.querySelector('.item-base-image');
+                    if (currentImage && currentImage.tagName === 'IMG') {
+                        // Используем актуальный путь из каталога
+                        let baseImagePath = itemInfo.image;
+                        
+                        if (baseImagePath && typeof baseImagePath === 'string' && baseImagePath.trim() !== '') {
+                            let finalImagePath = baseImagePath;
+                            
+                            // Если есть стадия загрязнения, формируем путь к изображению стадии
+                            if (stage > 0) {
+                                const pathMatch = baseImagePath.match(/^(.+\/)?(.+?)(\.(png|jpg|jpeg|svg))?$/i);
+                                if (pathMatch) {
+                                    const folderPath = pathMatch[1] || '';
+                                    const baseName = pathMatch[2] || '';
+                                    const extension = pathMatch[4] || 'png';
+                                    finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
+                                }
+                            }
+                            
+                            // Обновляем src только если путь изменился
+                            const currentSrc = currentImage.src;
+                            const newSrc = finalImagePath.startsWith('http') ? finalImagePath : 
+                                         (finalImagePath.startsWith('/') ? window.location.origin + finalImagePath : 
+                                         window.location.origin + '/' + finalImagePath);
+                            
+                            if (!currentSrc.includes(finalImagePath) && currentSrc !== newSrc) {
+                                currentImage.src = finalImagePath;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Обновляем информацию о предмете
+        updateItemInfo();
     }
 
     // Обработка Enter в модальных окнах
