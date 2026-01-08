@@ -400,8 +400,153 @@
         // Обновляем классы
         updateCarouselClasses();
         
+        // ВАЖНО: Принудительно обновляем изображение активного элемента
+        updateActiveItemImage();
+        
         updateIndicators();
         updateItemInfo();
+    }
+    
+    // Обновление изображения активного элемента карусели
+    function updateActiveItemImage() {
+        const itemsToShow = getFilteredItems();
+        if (itemsToShow.length === 0) return;
+        
+        const item = itemsToShow[currentItemIndex];
+        if (!item) return;
+        
+        const timeSinceCleaning = Date.now() - item.lastCleaned;
+        const minutesSinceCleaning = Math.floor(timeSinceCleaning / 60000);
+        const stage = calculateGermStage(minutesSinceCleaning, item);
+        
+        // Получаем актуальную информацию из каталога
+        const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+        if (!itemInfo || !itemInfo.image) return;
+        
+        // Определяем путь к изображению
+        let baseImagePath = itemInfo.image;
+        let finalImagePath = baseImagePath;
+        
+        // Если есть стадия загрязнения, формируем путь к изображению стадии
+        if (stage > 0 && baseImagePath) {
+            const pathMatch = baseImagePath.match(/^(.+\/)?(.+?)(\.(png|jpg|jpeg|svg))?$/i);
+            if (pathMatch) {
+                const folderPath = pathMatch[1] || '';
+                const baseName = pathMatch[2] || '';
+                const extension = pathMatch[4] || 'png';
+                finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
+            }
+        }
+        
+        // Находим активный элемент в DOM
+        const activeEl = document.querySelector('.carousel-item.active');
+        if (!activeEl) return;
+        
+        const imageContainer = activeEl.querySelector('.item-image-container');
+        if (!imageContainer) return;
+        
+        // Находим или создаем элемент изображения
+        let img = imageContainer.querySelector('.item-base-image');
+        if (!img || img.tagName !== 'IMG') {
+            // Если нет img элемента, создаем его
+            img = document.createElement('img');
+            img.className = 'item-base-image';
+            img.alt = item.name || itemInfo.name;
+            img.setAttribute('data-item-id', item.id);
+            img.setAttribute('data-item-name', item.name || itemInfo.name);
+            img.style.display = 'block';
+            imageContainer.insertBefore(img, imageContainer.firstChild);
+        }
+        
+        // Удаляем fallback иконку, если была
+        const fallback = imageContainer.querySelector('.item-icon-fallback');
+        if (fallback) {
+            fallback.remove();
+        }
+        
+        // Устанавливаем src - всегда обновляем, чтобы гарантировать правильное изображение
+        // Извлекаем только имя файла из текущего src для сравнения
+        const currentSrcPath = img.src ? img.src.split('/').pop().split('?')[0] : '';
+        const newSrcPath = finalImagePath.split('/').pop();
+        
+        // Обновляем src только если путь действительно изменился
+        if (currentSrcPath !== newSrcPath) {
+            img.src = finalImagePath;
+        } else if (!img.complete || img.naturalHeight === 0) {
+            // Если изображение еще не загружено, принудительно перезагружаем
+            img.src = finalImagePath + '?t=' + Date.now();
+        }
+        
+        // Показываем изображение
+        img.style.display = 'block';
+        
+        // Обработчик ошибки загрузки
+        img.onerror = function() {
+            // Если изображение стадии не загрузилось, пробуем базовое
+            if (baseImagePath && baseImagePath !== finalImagePath) {
+                this.src = baseImagePath;
+                this.onerror = function() {
+                    // Если и базовое не загрузилось, показываем иконку
+                    showFallbackIconForActive();
+                };
+            } else {
+                // Если это было базовое изображение, показываем иконку
+                showFallbackIconForActive();
+            }
+        };
+        
+        // Обновляем микробов
+        updateGermsForActiveItem(stage, imageContainer);
+    }
+    
+    // Показать fallback иконку для активного элемента
+    function showFallbackIconForActive() {
+        const activeEl = document.querySelector('.carousel-item.active');
+        if (!activeEl) return;
+        
+        const imageContainer = activeEl.querySelector('.item-image-container');
+        if (!imageContainer) return;
+        
+        const img = imageContainer.querySelector('.item-base-image');
+        if (img && img.tagName === 'IMG') {
+            img.style.display = 'none';
+        }
+        
+        if (!imageContainer.querySelector('.item-icon-fallback')) {
+            const item = getFilteredItems()[currentItemIndex];
+            if (!item) return;
+            
+            const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+            if (!itemInfo) return;
+            
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'item-base-image item-icon-fallback';
+            iconDiv.style.fontSize = '120px';
+            iconDiv.style.display = 'flex';
+            iconDiv.style.alignItems = 'center';
+            iconDiv.style.justifyContent = 'center';
+            iconDiv.textContent = itemInfo.icon;
+            imageContainer.appendChild(iconDiv);
+        }
+    }
+    
+    // Обновление микробов для активного элемента
+    function updateGermsForActiveItem(stage, imageContainer) {
+        if (!imageContainer) {
+            const activeEl = document.querySelector('.carousel-item.active');
+            if (!activeEl) return;
+            imageContainer = activeEl.querySelector('.item-image-container');
+            if (!imageContainer) return;
+        }
+        
+        // Удаляем старых микробов
+        imageContainer.querySelectorAll('.germ').forEach(g => g.remove());
+        
+        // Добавляем новых микробов, если есть стадия загрязнения
+        if (stage > 0) {
+            const germs = generateGerms(stage);
+            germs.forEach(germ => imageContainer.appendChild(germ));
+        }
     }
 
     // Рендеринг карусели
@@ -487,6 +632,13 @@
         
         // Устанавливаем правильные классы после создания всех элементов
         updateCarouselClasses();
+        
+        // ВАЖНО: Принудительно обновляем изображение активного элемента после создания
+        // Используем setTimeout, чтобы дать браузеру время создать DOM элементы
+        setTimeout(() => {
+            updateActiveItemImage();
+        }, 0);
+        
         updateCarousel();
     }
 
