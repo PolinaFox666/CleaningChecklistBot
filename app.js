@@ -436,6 +436,46 @@
             currentItemIndex = itemsToShow.length - 1;
         }
         
+        // ВАЖНО: Предзагружаем все изображения перед созданием элементов
+        // Это гарантирует, что изображения начнут загружаться сразу, даже для скрытых элементов
+        const imagePreloads = [];
+        itemsToShow.forEach((item) => {
+            const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+            if (itemInfo && itemInfo.image) {
+                const timeSinceCleaning = Date.now() - item.lastCleaned;
+                const minutesSinceCleaning = Math.floor(timeSinceCleaning / 60000);
+                const stage = calculateGermStage(minutesSinceCleaning, item);
+                
+                let baseImagePath = itemInfo.image;
+                let finalImagePath = baseImagePath;
+                
+                // Формируем путь к изображению стадии, если нужно
+                if (stage > 0 && baseImagePath) {
+                    const pathMatch = baseImagePath.match(/^(.+\/)?(.+?)(\.(png|jpg|jpeg|svg))?$/i);
+                    if (pathMatch) {
+                        const folderPath = pathMatch[1] || '';
+                        const baseName = pathMatch[2] || '';
+                        const extension = pathMatch[4] || 'png';
+                        finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
+                    }
+                }
+                
+                // Предзагружаем изображение стадии
+                if (finalImagePath) {
+                    const preloadImg = new Image();
+                    preloadImg.src = finalImagePath;
+                    imagePreloads.push(preloadImg);
+                }
+                
+                // Также предзагружаем базовое изображение (на случай, если стадия не загрузится)
+                if (baseImagePath && baseImagePath !== finalImagePath) {
+                    const preloadBase = new Image();
+                    preloadBase.src = baseImagePath;
+                    imagePreloads.push(preloadBase);
+                }
+            }
+        });
+        
         // Создаем все элементы в правильном порядке
         itemsToShow.forEach((item, index) => {
             const itemElement = createCarouselItem(item, index);
@@ -505,6 +545,7 @@
         baseImage.alt = item.name || itemInfo.name;
         baseImage.setAttribute('data-item-id', item.id);
         baseImage.setAttribute('data-item-name', item.name || itemInfo.name);
+        baseImage.style.display = 'block'; // Всегда показываем изображение
         
         // Функция для показа fallback иконки
         const showFallbackIcon = () => {
@@ -521,37 +562,25 @@
             }
         };
         
-        // Обработчики загрузки изображения
-        let fallbackAttempted = false;
-        let imageLoaded = false;
-        
-        baseImage.onload = function() {
-            imageLoaded = true;
-            this.style.display = 'block';
-            // Скрываем fallback иконку, если она была показана
-            const fallback = imageContainer.querySelector('.item-icon-fallback');
-            if (fallback) {
-                fallback.style.display = 'none';
-            }
-        };
-        
-        baseImage.onerror = function() {
-            // Если изображение стадии не загрузилось, пробуем базовое изображение (для любого stage)
-            if (!fallbackAttempted && baseImagePath && baseImagePath !== finalImagePath) {
-                fallbackAttempted = true;
-                this.src = baseImagePath;
-                return; // Пробуем загрузить базовое изображение
-            }
-            
-            // Если и базовое не загрузилось (или это было базовое), показываем иконку
-            if (!imageLoaded) {
-                showFallbackIcon();
-            }
-        };
-        
-        // Устанавливаем src сразу - браузер начнет загрузку
+        // УПРОЩЕННАЯ ЛОГИКА: как в каталоге - просто устанавливаем src
+        // Если изображение не загрузится, покажем иконку
         if (finalImagePath) {
             baseImage.src = finalImagePath;
+            
+            // Если изображение стадии не загрузилось, пробуем базовое изображение
+            baseImage.onerror = function() {
+                if (baseImagePath && baseImagePath !== finalImagePath) {
+                    // Пробуем загрузить базовое изображение
+                    this.src = baseImagePath;
+                    this.onerror = function() {
+                        // Если и базовое не загрузилось, показываем иконку
+                        showFallbackIcon();
+                    };
+                } else {
+                    // Если это было базовое изображение, показываем иконку
+                    showFallbackIcon();
+                }
+            };
         } else {
             // Если нет пути к изображению, сразу показываем иконку
             showFallbackIcon();
