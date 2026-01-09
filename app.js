@@ -52,16 +52,16 @@
         { id: 'shoe_rack', name: 'Полка для обуви', icon: '👟', image: 'images/shoe_rack.png' },
         { id: 'desk', name: 'Рабочий стол', icon: '🖥️', image: 'images/desk.png' },
         { id: 'bed', name: 'Постель', icon: '🛏️', image: 'images/bed.png' },
-        { id: 'windowsill', name: 'Подоконник', icon: '🪟', image: 'images/windowsill.png' },
+        { id: 'blender', name: 'Блендер', icon: '🍶', image: 'images/blender.png' },
         { id: 'window', name: 'Окна', icon: '🪟', image: 'images/window.png' },
-        { id: 'kitchen_apron', name: 'Кухонный фартук', icon: '🧽', image: 'images/kitchen_apron.png' },
-        { id: 'floor', name: 'Пол', icon: '🏠', image: 'images/floor.png' },
+        { id: 'kitchen', name: 'Кухня', icon: '🧽', image: 'images/kitchen.png' },
+        { id: 'vacuum', name: 'Пылесос', icon: '🏠', image: 'images/vacuum.png' },
         { id: 'sink', name: 'Раковина', icon: '🚿', image: 'images/sink.png' },
-        { id: 'bathroom', name: 'Ванная', icon: '🛁', image: 'images/bathroom.png' },
+        { id: 'bath', name: 'Ванна', icon: '🛁', image: 'images/bath.png' },
     { id: 'refrigerator', name: 'Холодильник', icon: '❄️', image: 'images/refrigerator.png' },
     { id: 'washing_machine', name: 'Стиральная машина', icon: '🧺', image: 'images/WashingMachine.png' },
-    { id: 'stove', name: 'Плита', icon: '🔥', image: 'images/stove.png' },
-    { id: 'oven', name: 'Духовка', icon: '🍞', image: 'images/oven.png' },
+    { id: 'airfryer', name: 'Аэрогриль', icon: '🔥', image: 'images/airfryer.png' },
+    { id: 'oven', name: 'Плита', icon: '🍞', image: 'images/oven.png' },
     { id: 'microwave', name: 'Микроволновка', icon: '📻', image: 'images/microwave.png' }
 ];
 
@@ -113,10 +113,26 @@
         const savedItems = localStorage.getItem('userItems');
         if (savedItems) {
             userItems = JSON.parse(savedItems);
+            
+            // МАППИНГ СТАРЫХ ID НА НОВЫЕ (миграция данных)
+            const idMigrationMap = {
+                'windowsill': 'blender',      // Подоконник -> Блендер
+                'kitchen_apron': 'kitchen',   // Кухонный фартук -> Кухня
+                'floor': 'vacuum',             // Пол -> Пылесос
+                'bathroom': 'bath',            // Ванная -> Ванна
+                'stove': 'airfryer'            // Плита (старая) -> Аэрогриль
+            };
+            
             // ВАЖНО: Всегда обновляем пути к изображениям из актуального каталога AVAILABLE_ITEMS
             // Это гарантирует, что пути всегда соответствуют текущим изображениям в каталоге
             let needsSave = false;
             userItems.forEach(item => {
+                // Миграция старых ID на новые
+                if (idMigrationMap[item.id]) {
+                    item.id = idMigrationMap[item.id];
+                    needsSave = true;
+                }
+                
                 const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
                 if (itemInfo) {
                     // Всегда обновляем путь к изображению из каталога, если он есть
@@ -329,7 +345,15 @@
         const itemsToShow = getFilteredItems();
         if (itemsToShow.length === 0) return;
         currentItemIndex = (currentItemIndex + 1) % itemsToShow.length;
+        
+        // Обновляем карусель
         updateCarousel();
+        
+        // ВАЖНО: Принудительно обновляем изображение нового активного элемента
+        // Используем небольшую задержку, чтобы дать браузеру время обновить классы
+        setTimeout(() => {
+            updateActiveItemImage();
+        }, 50);
         
         if (tg?.HapticFeedback) {
             tg.HapticFeedback.impactOccurred('light');
@@ -341,7 +365,15 @@
         const itemsToShow = getFilteredItems();
         if (itemsToShow.length === 0) return;
         currentItemIndex = (currentItemIndex - 1 + itemsToShow.length) % itemsToShow.length;
+        
+        // Обновляем карусель
         updateCarousel();
+        
+        // ВАЖНО: Принудительно обновляем изображение нового активного элемента
+        // Используем небольшую задержку, чтобы дать браузеру время обновить классы
+        setTimeout(() => {
+            updateActiveItemImage();
+        }, 50);
         
         if (tg?.HapticFeedback) {
             tg.HapticFeedback.impactOccurred('light');
@@ -633,13 +665,130 @@
         // Устанавливаем правильные классы после создания всех элементов
         updateCarouselClasses();
         
-        // ВАЖНО: Принудительно обновляем изображение активного элемента после создания
-        // Используем setTimeout, чтобы дать браузеру время создать DOM элементы
+        // ВАЖНО: Принудительно загружаем изображения для ВСЕХ элементов карусели
+        // Это гарантирует, что изображения загрузятся даже для скрытых элементов
         setTimeout(() => {
+            updateAllCarouselImages();
             updateActiveItemImage();
         }, 0);
         
         updateCarousel();
+    }
+    
+    // Обновление изображений для ВСЕХ элементов карусели (не только активного)
+    function updateAllCarouselImages() {
+        const track = document.getElementById('carouselTrack');
+        if (!track) return;
+        
+        const itemsToShow = getFilteredItems();
+        if (itemsToShow.length === 0) return;
+        
+        const allItems = track.querySelectorAll('.carousel-item');
+        
+        allItems.forEach((itemEl, index) => {
+            if (index >= itemsToShow.length) return;
+            
+            const item = itemsToShow[index];
+            if (!item) return;
+            
+            const timeSinceCleaning = Date.now() - item.lastCleaned;
+            const minutesSinceCleaning = Math.floor(timeSinceCleaning / 60000);
+            const stage = calculateGermStage(minutesSinceCleaning, item);
+            
+            // Получаем актуальную информацию из каталога
+            const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+            if (!itemInfo || !itemInfo.image) return;
+            
+            // Определяем путь к изображению
+            let baseImagePath = itemInfo.image;
+            let finalImagePath = baseImagePath;
+            
+            // Если есть стадия загрязнения, формируем путь к изображению стадии
+            if (stage > 0 && baseImagePath) {
+                const pathMatch = baseImagePath.match(/^(.+\/)?(.+?)(\.(png|jpg|jpeg|svg))?$/i);
+                if (pathMatch) {
+                    const folderPath = pathMatch[1] || '';
+                    const baseName = pathMatch[2] || '';
+                    const extension = pathMatch[4] || 'png';
+                    finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
+                }
+            }
+            
+            const imageContainer = itemEl.querySelector('.item-image-container');
+            if (!imageContainer) return;
+            
+            // Находим или создаем элемент изображения
+            let img = imageContainer.querySelector('.item-base-image');
+            if (!img || img.tagName !== 'IMG') {
+                // Если нет img элемента, создаем его
+                img = document.createElement('img');
+                img.className = 'item-base-image';
+                img.alt = item.name || itemInfo.name;
+                img.setAttribute('data-item-id', item.id);
+                img.setAttribute('data-item-name', item.name || itemInfo.name);
+                img.style.display = 'block';
+                imageContainer.insertBefore(img, imageContainer.firstChild);
+            }
+            
+            // Удаляем fallback иконку, если была
+            const fallback = imageContainer.querySelector('.item-icon-fallback');
+            if (fallback) {
+                fallback.remove();
+            }
+            
+            // ВАЖНО: Принудительно устанавливаем src для всех элементов
+            // Это гарантирует загрузку изображений даже для скрытых элементов
+            const currentSrcPath = img.src ? img.src.split('/').pop().split('?')[0] : '';
+            const newSrcPath = finalImagePath.split('/').pop();
+            
+            if (currentSrcPath !== newSrcPath || !img.complete || img.naturalHeight === 0) {
+                // Устанавливаем src - это заставит браузер загрузить изображение
+                img.src = finalImagePath;
+                img.style.display = 'block';
+                
+                // Обработчик ошибки загрузки
+                img.onerror = function() {
+                    // Если изображение стадии не загрузилось, пробуем базовое
+                    if (baseImagePath && baseImagePath !== finalImagePath) {
+                        this.src = baseImagePath;
+                        this.onerror = function() {
+                            // Если и базовое не загрузилось, показываем иконку
+                            this.style.display = 'none';
+                            if (!imageContainer.querySelector('.item-icon-fallback')) {
+                                const iconDiv = document.createElement('div');
+                                iconDiv.className = 'item-base-image item-icon-fallback';
+                                iconDiv.style.fontSize = '120px';
+                                iconDiv.style.display = 'flex';
+                                iconDiv.style.alignItems = 'center';
+                                iconDiv.style.justifyContent = 'center';
+                                iconDiv.textContent = itemInfo.icon;
+                                imageContainer.appendChild(iconDiv);
+                            }
+                        };
+                    } else {
+                        // Если это было базовое изображение, показываем иконку
+                        this.style.display = 'none';
+                        if (!imageContainer.querySelector('.item-icon-fallback')) {
+                            const iconDiv = document.createElement('div');
+                            iconDiv.className = 'item-base-image item-icon-fallback';
+                            iconDiv.style.fontSize = '120px';
+                            iconDiv.style.display = 'flex';
+                            iconDiv.style.alignItems = 'center';
+                            iconDiv.style.justifyContent = 'center';
+                            iconDiv.textContent = itemInfo.icon;
+                            imageContainer.appendChild(iconDiv);
+                        }
+                    }
+                };
+            }
+            
+            // Обновляем микробов для этого элемента
+            imageContainer.querySelectorAll('.germ').forEach(g => g.remove());
+            if (stage > 0) {
+                const germs = generateGerms(stage);
+                germs.forEach(germ => imageContainer.appendChild(germ));
+            }
+        });
     }
 
     // Создание элемента карусели
