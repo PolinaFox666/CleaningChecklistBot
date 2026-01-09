@@ -470,9 +470,16 @@
             }
         }
         
-        // Находим активный элемент в DOM
-        const activeEl = document.querySelector('.carousel-item.active');
-        if (!activeEl) return;
+        // ВАЖНО: Используем data-item-id для поиска правильного элемента
+        // Это гарантирует, что мы обновляем именно тот элемент, который соответствует текущему предмету
+        const track = document.getElementById('carouselTrack');
+        if (!track) return;
+        
+        const activeEl = track.querySelector(`.carousel-item[data-item-id="${item.id}"]`);
+        if (!activeEl) {
+            console.warn(`Элемент карусели с data-item-id="${item.id}" не найден`);
+            return;
+        }
         
         const imageContainer = activeEl.querySelector('.item-image-container');
         if (!imageContainer) return;
@@ -496,34 +503,22 @@
             fallback.remove();
         }
         
-        // Устанавливаем src - всегда обновляем, чтобы гарантировать правильное изображение
-        // Извлекаем только имя файла из текущего src для сравнения
-        const currentSrcPath = img.src ? img.src.split('/').pop().split('?')[0] : '';
-        const newSrcPath = finalImagePath.split('/').pop();
-        
-        // Обновляем src только если путь действительно изменился
-        if (currentSrcPath !== newSrcPath) {
-            img.src = finalImagePath;
-        } else if (!img.complete || img.naturalHeight === 0) {
-            // Если изображение еще не загружено, принудительно перезагружаем
-            img.src = finalImagePath + '?t=' + Date.now();
-        }
-        
-        // Показываем изображение
+        // ВАЖНО: Всегда обновляем src, чтобы гарантировать правильное изображение
+        // Используем cache-buster для принудительной перезагрузки
+        const cacheBuster = '?t=' + Date.now();
+        img.src = finalImagePath + cacheBuster;
         img.style.display = 'block';
         
         // Обработчик ошибки загрузки
         img.onerror = function() {
             // Если изображение стадии не загрузилось, пробуем базовое
             if (baseImagePath && baseImagePath !== finalImagePath) {
-                this.src = baseImagePath;
+                this.src = baseImagePath + cacheBuster;
                 this.onerror = function() {
-                    // Если и базовое не загрузилось, показываем иконку
-                    showFallbackIconForActive();
+                    console.warn(`Не удалось загрузить изображение для предмета ${itemInfo.name}: ${finalImagePath}`);
                 };
             } else {
-                // Если это было базовое изображение, показываем иконку
-                showFallbackIconForActive();
+                console.warn(`Не удалось загрузить изображение для предмета ${itemInfo.name}: ${finalImagePath}`);
             }
         };
         
@@ -656,7 +651,8 @@
         // Создаем все элементы в правильном порядке
         itemsToShow.forEach((item, index) => {
             const itemElement = createCarouselItem(item, index);
-            // Сохраняем data-атрибуты для связи с данными
+            // ВАЖНО: Сохраняем data-атрибуты для связи с данными
+            // data-item-id - ключевой атрибут для правильной связи элементов с данными
             itemElement.setAttribute('data-item-index', index);
             itemElement.setAttribute('data-item-id', item.id);
             track.appendChild(itemElement);
@@ -685,10 +681,14 @@
         
         const allItems = track.querySelectorAll('.carousel-item');
         
-        allItems.forEach((itemEl, index) => {
-            if (index >= itemsToShow.length) return;
+        // ВАЖНО: Используем data-item-id для правильной связи элементов с данными
+        // Это гарантирует, что каждый элемент получит правильные данные, независимо от порядка
+        allItems.forEach((itemEl) => {
+            const itemId = itemEl.getAttribute('data-item-id');
+            if (!itemId) return;
             
-            const item = itemsToShow[index];
+            // Находим соответствующий предмет по ID
+            const item = itemsToShow.find(i => i.id === itemId);
             if (!item) return;
             
             const timeSinceCleaning = Date.now() - item.lastCleaned;
@@ -752,32 +752,12 @@
                     if (baseImagePath && baseImagePath !== finalImagePath) {
                         this.src = baseImagePath;
                         this.onerror = function() {
-                            // Если и базовое не загрузилось, показываем иконку
-                            this.style.display = 'none';
-                            if (!imageContainer.querySelector('.item-icon-fallback')) {
-                                const iconDiv = document.createElement('div');
-                                iconDiv.className = 'item-base-image item-icon-fallback';
-                                iconDiv.style.fontSize = '120px';
-                                iconDiv.style.display = 'flex';
-                                iconDiv.style.alignItems = 'center';
-                                iconDiv.style.justifyContent = 'center';
-                                iconDiv.textContent = itemInfo.icon;
-                                imageContainer.appendChild(iconDiv);
-                            }
+                            // Если и базовое не загрузилось, оставляем пустым (изображения должны быть)
+                            console.warn(`Не удалось загрузить изображение для предмета ${itemInfo.name}: ${finalImagePath}`);
                         };
                     } else {
-                        // Если это было базовое изображение, показываем иконку
-                        this.style.display = 'none';
-                        if (!imageContainer.querySelector('.item-icon-fallback')) {
-                            const iconDiv = document.createElement('div');
-                            iconDiv.className = 'item-base-image item-icon-fallback';
-                            iconDiv.style.fontSize = '120px';
-                            iconDiv.style.display = 'flex';
-                            iconDiv.style.alignItems = 'center';
-                            iconDiv.style.justifyContent = 'center';
-                            iconDiv.textContent = itemInfo.icon;
-                            imageContainer.appendChild(iconDiv);
-                        }
+                        // Если это было базовое изображение, оставляем пустым
+                        console.warn(`Не удалось загрузить изображение для предмета ${itemInfo.name}: ${finalImagePath}`);
                     }
                 };
             }
@@ -848,23 +828,8 @@
         baseImage.setAttribute('data-item-name', item.name || itemInfo.name);
         baseImage.style.display = 'block'; // Всегда показываем изображение
         
-        // Функция для показа fallback иконки
-        const showFallbackIcon = () => {
-            baseImage.style.display = 'none';
-            if (!imageContainer.querySelector('.item-icon-fallback')) {
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'item-base-image item-icon-fallback';
-                iconDiv.style.fontSize = '120px';
-                iconDiv.style.display = 'flex';
-                iconDiv.style.alignItems = 'center';
-                iconDiv.style.justifyContent = 'center';
-                iconDiv.textContent = itemInfo.icon;
-                imageContainer.appendChild(iconDiv);
-            }
-        };
-        
-        // УПРОЩЕННАЯ ЛОГИКА: как в каталоге - просто устанавливаем src
-        // Если изображение не загрузится, покажем иконку
+        // УПРОЩЕННАЯ ЛОГИКА: устанавливаем src напрямую
+        // Все предметы имеют изображения, поэтому fallback иконки не нужны
         if (finalImagePath) {
             baseImage.src = finalImagePath;
             
@@ -874,17 +839,14 @@
                     // Пробуем загрузить базовое изображение
                     this.src = baseImagePath;
                     this.onerror = function() {
-                        // Если и базовое не загрузилось, показываем иконку
-                        showFallbackIcon();
+                        console.warn(`Не удалось загрузить изображение для предмета ${itemInfo.name}: ${finalImagePath}`);
                     };
                 } else {
-                    // Если это было базовое изображение, показываем иконку
-                    showFallbackIcon();
+                    console.warn(`Не удалось загрузить изображение для предмета ${itemInfo.name}: ${finalImagePath}`);
                 }
             };
         } else {
-            // Если нет пути к изображению, сразу показываем иконку
-            showFallbackIcon();
+            console.warn(`Предмет ${itemInfo.name} не имеет пути к изображению`);
         }
         
         imageContainer.appendChild(baseImage);
@@ -993,6 +955,10 @@
         
         const item = itemsToShow[currentItemIndex];
         
+        // ВАЖНО: Получаем актуальное имя из каталога AVAILABLE_ITEMS
+        const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+        const displayName = itemInfo ? itemInfo.name : item.name;
+        
         // Дополнительная проверка: убеждаемся, что активный элемент карусели соответствует данным
         const track = document.getElementById('carouselTrack');
         const activeElement = track.querySelector('.carousel-item.active');
@@ -1017,7 +983,8 @@
         const stage = calculateGermStage(minutesSinceCleaning, item);
         const isDirty = stage > 0;
         
-        document.getElementById('itemNameText').textContent = item.name;
+        // ВАЖНО: Используем актуальное имя из каталога
+        document.getElementById('itemNameText').textContent = displayName;
         
         // Показываем информацию о назначенном члене семьи в Multi режиме
         let timeText = formatTime(minutesSinceCleaning);
