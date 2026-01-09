@@ -445,6 +445,9 @@
         if (itemsToShow.length === 0) return;
         
         const item = itemsToShow[currentItemIndex];
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:443',message:'updateActiveItemImage: entry',data:{currentItemIndex,itemsToShowLength:itemsToShow.length,itemId:item?.id,itemName:item?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
         if (!item) return;
         
         const timeSinceCleaning = Date.now() - item.lastCleaned;
@@ -477,9 +480,15 @@
         
         const activeEl = track.querySelector(`.carousel-item[data-item-id="${item.id}"]`);
         if (!activeEl) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:478',message:'updateActiveItemImage: activeEl not found',data:{itemId:item.id,itemName:item.name,currentItemIndex,allItemsCount:track.querySelectorAll('.carousel-item').length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
             console.warn(`Элемент карусели с data-item-id="${item.id}" не найден`);
             return;
         }
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:483',message:'updateActiveItemImage: activeEl found',data:{itemId:item.id,itemName:item.name,activeElDataItemId:activeEl.getAttribute('data-item-id'),hasActiveClass:activeEl.classList.contains('active')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
         
         const imageContainer = activeEl.querySelector('.item-image-container');
         if (!imageContainer) return;
@@ -508,6 +517,9 @@
         const cacheBuster = '?t=' + Date.now();
         img.src = finalImagePath + cacheBuster;
         img.style.display = 'block';
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:505',message:'updateActiveItemImage: set img src',data:{itemId:item.id,itemName:itemInfo.name,imgSrc:img.src,finalImagePath,cacheBuster},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
         
         // Обработчик ошибки загрузки
         img.onerror = function() {
@@ -650,11 +662,17 @@
         
         // Создаем все элементы в правильном порядке
         itemsToShow.forEach((item, index) => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:652',message:'renderCarousel: creating item',data:{index,itemId:item.id,itemName:item.name,itemsToShowLength:itemsToShow.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             const itemElement = createCarouselItem(item, index);
             // ВАЖНО: Сохраняем data-атрибуты для связи с данными
             // data-item-id - ключевой атрибут для правильной связи элементов с данными
             itemElement.setAttribute('data-item-index', index);
             itemElement.setAttribute('data-item-id', item.id);
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:658',message:'renderCarousel: set data-item-id',data:{index,itemId:item.id,dataItemId:itemElement.getAttribute('data-item-id')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             track.appendChild(itemElement);
         });
         
@@ -683,13 +701,24 @@
         
         // ВАЖНО: Используем data-item-id для правильной связи элементов с данными
         // Это гарантирует, что каждый элемент получит правильные данные, независимо от порядка
-        allItems.forEach((itemEl) => {
+        allItems.forEach((itemEl, domIndex) => {
             const itemId = itemEl.getAttribute('data-item-id');
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:687',message:'updateAllCarouselImages: processing element',data:{domIndex,itemId,allItemsCount:allItems.length,itemsToShowCount:itemsToShow.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             if (!itemId) return;
             
             // Находим соответствующий предмет по ID
             const item = itemsToShow.find(i => i.id === itemId);
-            if (!item) return;
+            if (!item) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:692',message:'updateAllCarouselImages: item not found',data:{itemId,domIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
+                return;
+            }
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:695',message:'updateAllCarouselImages: item found',data:{itemId,itemName:item.name,domIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             
             const timeSinceCleaning = Date.now() - item.lastCleaned;
             const minutesSinceCleaning = Math.floor(timeSinceCleaning / 60000);
@@ -697,7 +726,15 @@
             
             // Получаем актуальную информацию из каталога
             const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
-            if (!itemInfo || !itemInfo.image) return;
+            if (!itemInfo || !itemInfo.image) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:699',message:'updateAllCarouselImages: itemInfo not found or no image',data:{itemId:item.id,itemName:item.name,hasItemInfo:!!itemInfo,itemInfoImage:itemInfo?.image},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
+                return;
+            }
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:702',message:'updateAllCarouselImages: itemInfo found',data:{itemId:item.id,itemName:item.name,itemInfoName:itemInfo.name,itemInfoImage:itemInfo.image,stage},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             
             // Определяем путь к изображению
             let baseImagePath = itemInfo.image;
@@ -711,6 +748,9 @@
                     const baseName = pathMatch[2] || '';
                     const extension = pathMatch[4] || 'png';
                     finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:713',message:'updateAllCarouselImages: stage image path',data:{itemId:item.id,baseImagePath,finalImagePath,stage,baseName,extension},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                    // #endregion
                 }
             }
             
@@ -745,9 +785,15 @@
                 // Устанавливаем src - это заставит браузер загрузить изображение
                 img.src = finalImagePath;
                 img.style.display = 'block';
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:744',message:'updateAllCarouselImages: set img src',data:{itemId:item.id,itemName:itemInfo.name,imgSrc:img.src,finalImagePath,currentSrcPath,newSrcPath,imgComplete:img.complete,imgNaturalHeight:img.naturalHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
                 
                 // Обработчик ошибки загрузки
                 img.onerror = function() {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:750',message:'updateAllCarouselImages: img onerror',data:{itemId:item.id,itemName:itemInfo.name,failedSrc:this.src,finalImagePath,baseImagePath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                    // #endregion
                     // Если изображение стадии не загрузилось, пробуем базовое
                     if (baseImagePath && baseImagePath !== finalImagePath) {
                         this.src = baseImagePath;
@@ -817,7 +863,14 @@
                 // Формируем путь к изображению стадии (stage + 1, так как stage 0 = чистое)
                 // Например: images/WashingMachine.png -> images/WashingMachine2.png для stage 1
                 finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:836',message:'createCarouselItem: stage image path',data:{itemId:item.id,baseImagePath,finalImagePath,stage,baseName,extension},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
             }
+        } else {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:840',message:'createCarouselItem: base image path',data:{itemId:item.id,finalImagePath,stage},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
         }
         
         // Создаем элемент изображения
@@ -832,9 +885,15 @@
         // Все предметы имеют изображения, поэтому fallback иконки не нужны
         if (finalImagePath) {
             baseImage.src = finalImagePath;
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:850',message:'createCarouselItem: set img src',data:{itemId:item.id,itemName:itemInfo.name,imgSrc:baseImage.src,finalImagePath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
             
             // Если изображение стадии не загрузилось, пробуем базовое изображение
             baseImage.onerror = function() {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:854',message:'createCarouselItem: img onerror',data:{itemId:item.id,itemName:itemInfo.name,failedSrc:this.src,finalImagePath,baseImagePath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
                 if (baseImagePath && baseImagePath !== finalImagePath) {
                     // Пробуем загрузить базовое изображение
                     this.src = baseImagePath;
@@ -844,6 +903,11 @@
                 } else {
                     console.warn(`Не удалось загрузить изображение для предмета ${itemInfo.name}: ${finalImagePath}`);
                 }
+            };
+            baseImage.onload = function() {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:866',message:'createCarouselItem: img onload',data:{itemId:item.id,itemName:itemInfo.name,loadedSrc:this.src},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
             };
         } else {
             console.warn(`Предмет ${itemInfo.name} не имеет пути к изображению`);
