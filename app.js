@@ -387,18 +387,24 @@
         
         if (itemsToShow.length === 0) return;
         
+        // ВАЖНО: Проверяем, что currentItemIndex в допустимых пределах
+        if (currentItemIndex < 0 || currentItemIndex >= itemsToShow.length) {
+            currentItemIndex = 0;
+        }
+        
+        const currentItem = itemsToShow[currentItemIndex];
+        if (!currentItem) return;
+        
         const items = track.querySelectorAll('.carousel-item');
         items.forEach((itemEl) => {
             itemEl.classList.remove('prev', 'next', 'active');
             
-            // Получаем ID и индекс из data-атрибутов для правильной синхронизации
+            // ВАЖНО: Используем только data-item-id для определения активного элемента
+            // Это гарантирует правильную синхронизацию независимо от индексов
             const itemId = itemEl.getAttribute('data-item-id');
-            const itemIndex = parseInt(itemEl.getAttribute('data-item-index')) || 0;
             
-            // Проверяем, что элемент соответствует текущему индексу
-            // Используем ID для дополнительной проверки
-            const currentItem = itemsToShow[currentItemIndex];
-            const isCurrentItem = currentItem && itemId === currentItem.id && itemIndex === currentItemIndex;
+            // Находим индекс этого элемента в itemsToShow по ID
+            const itemIndexInArray = itemsToShow.findIndex(i => i.id === itemId);
             
             const totalItems = itemsToShow.length;
             let prevIndex = currentItemIndex - 1;
@@ -408,11 +414,12 @@
             if (prevIndex < 0) prevIndex = totalItems - 1;
             if (nextIndex >= totalItems) nextIndex = 0;
             
-            if (isCurrentItem || itemIndex === currentItemIndex) {
+            // ВАЖНО: Используем ID для определения активного элемента, а не индекс
+            if (itemId === currentItem.id) {
                 itemEl.classList.add('active');
-            } else if (itemIndex === prevIndex) {
+            } else if (itemIndexInArray === prevIndex) {
                 itemEl.classList.add('prev');
-            } else if (itemIndex === nextIndex) {
+            } else if (itemIndexInArray === nextIndex) {
                 itemEl.classList.add('next');
             }
         });
@@ -663,7 +670,10 @@
         // Создаем все элементы в правильном порядке
         itemsToShow.forEach((item, index) => {
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:652',message:'renderCarousel: creating item',data:{index,itemId:item.id,itemName:item.name,itemsToShowLength:itemsToShow.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            const logData = {location:'app.js:652',message:'renderCarousel: creating item',data:{index,itemId:item.id,itemName:item.name,itemsToShowLength:itemsToShow.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
+            console.log('[DEBUG]', logData);
+            try { localStorage.setItem('debug_log_' + Date.now(), JSON.stringify(logData)); } catch(e) {}
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
             // #endregion
             const itemElement = createCarouselItem(item, index);
             // ВАЖНО: Сохраняем data-атрибуты для связи с данными
