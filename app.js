@@ -670,8 +670,9 @@
         // Создаем все элементы в правильном порядке
         itemsToShow.forEach((item, index) => {
             // #region agent log
-            const logData = {location:'app.js:652',message:'renderCarousel: creating item',data:{index,itemId:item.id,itemName:item.name,itemsToShowLength:itemsToShow.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-            console.log('[DEBUG]', logData);
+            const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
+            const logData = {location:'app.js:664',message:'renderCarousel: creating item',data:{index,itemId:item.id,itemName:item.name,itemInfoName:itemInfo?.name,itemInfoImage:itemInfo?.image,itemsToShowLength:itemsToShow.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
+            console.log('[DEBUG renderCarousel]', JSON.stringify(logData.data, null, 2));
             try { localStorage.setItem('debug_log_' + Date.now(), JSON.stringify(logData)); } catch(e) {}
             fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
             // #endregion
@@ -738,12 +739,16 @@
             const itemInfo = AVAILABLE_ITEMS.find(ai => ai.id === item.id);
             if (!itemInfo || !itemInfo.image) {
                 // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:699',message:'updateAllCarouselImages: itemInfo not found or no image',data:{itemId:item.id,itemName:item.name,hasItemInfo:!!itemInfo,itemInfoImage:itemInfo?.image},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                const logData8 = {location:'app.js:730',message:'updateAllCarouselImages: itemInfo not found or no image',data:{itemId:item.id,itemName:item.name,hasItemInfo:!!itemInfo,itemInfoImage:itemInfo?.image},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+                console.warn('[DEBUG updateAllCarouselImages]', logData8.data);
+                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData8)}).catch(()=>{});
                 // #endregion
                 return;
             }
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:702',message:'updateAllCarouselImages: itemInfo found',data:{itemId:item.id,itemName:item.name,itemInfoName:itemInfo.name,itemInfoImage:itemInfo.image,stage},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            const logData9 = {location:'app.js:737',message:'updateAllCarouselImages: itemInfo found',data:{itemId:item.id,itemName:item.name,itemInfoName:itemInfo.name,itemInfoImage:itemInfo.image,stage,domIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+            console.log('[DEBUG updateAllCarouselImages itemInfo]', JSON.stringify(logData9.data, null, 2));
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData9)}).catch(()=>{});
             // #endregion
             
             // Определяем путь к изображению
@@ -874,7 +879,9 @@
                 // Например: images/WashingMachine.png -> images/WashingMachine2.png для stage 1
                 finalImagePath = `${folderPath}${baseName}${stage + 1}.${extension}`;
                 // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:836',message:'createCarouselItem: stage image path',data:{itemId:item.id,baseImagePath,finalImagePath,stage,baseName,extension},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                const logData3 = {location:'app.js:865',message:'createCarouselItem: stage image path',data:{itemId:item.id,itemName:itemInfo.name,baseImagePath,finalImagePath,stage,baseName,extension},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+                console.log('[DEBUG createCarouselItem stage]', JSON.stringify(logData3.data, null, 2));
+                fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData3)}).catch(()=>{});
                 // #endregion
             }
         } else {
@@ -896,7 +903,9 @@
         if (finalImagePath) {
             baseImage.src = finalImagePath;
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:850',message:'createCarouselItem: set img src',data:{itemId:item.id,itemName:itemInfo.name,imgSrc:baseImage.src,finalImagePath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            const logData4 = {location:'app.js:890',message:'createCarouselItem: set img src',data:{itemId:item.id,itemName:itemInfo.name,imgSrc:baseImage.src,finalImagePath,index},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'};
+            console.log('[DEBUG createCarouselItem src]', JSON.stringify(logData4.data, null, 2));
+            fetch('http://127.0.0.1:7242/ingest/ca6d80dd-9c67-4724-92c8-0ab8d48bc9dd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData4)}).catch(()=>{});
             // #endregion
             
             // Если изображение стадии не загрузилось, пробуем базовое изображение
